@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亚马逊美国站 FBA 配送费计算器 (2025-2026版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+        .input-group-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        .result-card {
+            transition: all 0.3s ease;
+        }
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        /* Custom Toggle Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #2563EB;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #2563EB;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-slate-900 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fa-brands fa-amazon text-3xl text-yellow-500"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide leading-tight">FBA 配送费计算器</h1>
+                    <span class="text-xs font-normal text-gray-400">含 2025旺季 & 2026新政</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4 md:p-8 flex-grow">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Input Section -->
+            <div class="lg:col-span-1 bg-white rounded-xl shadow-md p-6 h-fit">
+                <h2 class="text-lg font-bold text-gray-800 mb-5 border-b pb-2"><i class="fa-solid fa-sliders mr-2 text-blue-600"></i>计算参数</h2>
+                
+                <!-- Period Selector (Critical for 2025/2026/Peak) -->
+                <div class="mb-5">
+                    <label class="input-group-label text-blue-800">费率版本 / 时间段</label>
+                    <select id="ratePeriod" class="w-full border-2 border-blue-100 bg-blue-50 rounded-lg p-2.5 text-sm font-semibold text-gray-700 focus:border-blue-500 outline-none transition" onchange="calculate()">
+                        <option value="2025_std">2025 标准费率 (非旺季)</option>
+                        <option value="2025_peak" selected>2025 旺季 (10/15 - 1/14)</option>
+                        <option value="2026_new">2026 新费率 (1/15/2026 起)</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1" id="periodHint">当前应用：2025年假日旺季配送费</p>
+                </div>
+
+                <!-- Category Toggle -->
+                <div class="mb-5">
+                    <label class="input-group-label">商品类目</label>
+                    <div class="flex bg-gray-100 p-1 rounded-lg">
+                        <button onclick="setCategory('standard')" id="btn-std" class="flex-1 py-2 px-4 rounded-md text-sm font-medium bg-white text-blue-600 shadow-sm transition-all">非服装类</button>
+                        <button onclick="setCategory('apparel')" id="btn-app" class="flex-1 py-2 px-4 rounded-md text-sm font-medium text-gray-500 transition-all">服装类</button>
+                    </div>
+                    <input type="hidden" id="isApparel" value="false">
+                </div>
+
+                <!-- Price (Critical for 2026 fees) -->
+                <div class="mb-5">
+                    <label class="input-group-label">商品售价 (USD)</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2 text-gray-500">$</span>
+                        <input type="number" id="price" placeholder="0.00" class="w-full border border-gray-300 rounded-lg p-2 pl-7 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" oninput="calculate()">
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">影响2026年涨幅及低价费率判定</p>
+                </div>
+
+                <!-- Dimensions -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="input-group-label">包装尺寸 (长 x 宽 x 高)</label>
+                        <select id="dimUnit" class="text-xs border border-gray-300 rounded px-2 py-1 bg-gray-50 focus:outline-none focus:border-blue-500" onchange="calculate()">
+                            <option value="cm">厘米 (cm)</option>
+                            <option value="in">英寸 (in)</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" id="length" placeholder="长" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" oninput="calculate()">
+                        <input type="number" id="width" placeholder="宽" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" oninput="calculate()">
+                        <input type="number" id="height" placeholder="高" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" oninput="calculate()">
+                    </div>
+                </div>
+
+                <!-- Weight -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="input-group-label">实重</label>
+                        <select id="weightUnit" class="text-xs border border-gray-300 rounded px-2 py-1 bg-gray-50 focus:outline-none focus:border-blue-500" onchange="calculate()">
+                            <option value="kg">千克 (kg)</option>
+                            <option value="lb">磅 (lb)</option>
+                            <option value="oz">盎司 (oz)</option>
+                        </select>
+                    </div>
+                    <input type="number" id="weight" placeholder="输入重量" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" oninput="calculate()">
+                </div>
+
+                <button onclick="calculate()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow transition duration-200 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> 重新计算
+                </button>
+            </div>
+
+            <!-- Results Section -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Main Fee Card -->
+                <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500 result-card relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-bl-lg" id="seasonBadge">
+                        旺季费率生效中
+                    </div>
+                    <h3 class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">预估 FBA 配送费</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-5xl font-bold text-gray-900" id="feeDisplay">$0.00</span>
+                        <span class="text-gray-500 text-lg">/件</span>
+                    </div>
+                    
+                    <!-- Fee Breakdown / Delta -->
+                    <div class="mt-3 flex flex-wrap gap-2" id="feeBadges">
+                        <!-- Dynamic badges inserted via JS -->
+                    </div>
+                </div>
+
+                <!-- Details Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- Size Tier -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="p-2 bg-blue-50 rounded-lg text-blue-600">
+                                <i class="fa-solid fa-ruler-combined"></i>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-600">尺寸分段 (Size Tier)</span>
+                        </div>
+                        <p class="text-lg font-bold text-gray-800 pl-1" id="tierDisplay">-</p>
+                        <div class="text-xs text-gray-400 mt-1 pl-1 flex flex-col gap-1">
+                            <span id="dimDisplay">L: - | W: - | H: - (in)</span>
+                            <span id="girthDisplay" class="text-gray-300">围长+长: -</span>
+                        </div>
+                    </div>
+
+                    <!-- Weight Analysis -->
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="p-2 bg-green-50 rounded-lg text-green-600">
+                                <i class="fa-solid fa-weight-hanging"></i>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-600">计费重量 (Billable Weight)</span>
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <p class="text-lg font-bold text-gray-800 pl-1" id="billableWeightDisplay">- lb</p>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-500 space-y-1 pl-1 border-t pt-2">
+                            <div class="flex justify-between">
+                                <span>实际重量:</span>
+                                <span id="actualWeightDisplay">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>体积重量 (Dim / 139):</span>
+                                <span id="dimWeightDisplay">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Info/Warnings -->
+                <div class="bg-blue-50 rounded-xl p-4 text-sm text-blue-800 border border-blue-100" id="infoBox">
+                    <h4 class="font-bold mb-2"><i class="fa-solid fa-circle-info mr-2"></i>费率说明</h4>
+                    <ul class="list-disc list-inside space-y-1 opacity-80" id="infoList">
+                        <li>请在左侧输入商品数据以获取报价。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- Configuration Data (Approximations based on 2025/2026 Official Charts) ---
+
+        // 2025 Base Rates (Non-Peak) - Simplified Table for Standard Items
+        // Note: This is a simplified logic representation. Real tables are granular.
+        // We will use a helper function to get base 2025 rate, then apply modifiers.
+
+        const UI = {
+            setCategory: (type) => {
+                const btnStd = document.getElementById('btn-std');
+                const btnApp = document.getElementById('btn-app');
+                const isApparelInput = document.getElementById('isApparel');
+
+                if (type === 'apparel') {
+                    btnStd.className = "flex-1 py-2 px-4 rounded-md text-sm font-medium text-gray-500 transition-all";
+                    btnApp.className = "flex-1 py-2 px-4 rounded-md text-sm font-medium bg-white text-blue-600 shadow-sm transition-all";
+                    isApparelInput.value = 'true';
+                } else {
+                    btnApp.className = "flex-1 py-2 px-4 rounded-md text-sm font-medium text-gray-500 transition-all";
+                    btnStd.className = "flex-1 py-2 px-4 rounded-md text-sm font-medium bg-white text-blue-600 shadow-sm transition-all";
+                    isApparelInput.value = 'false';
+                }
+                calculate();
+            }
+        };
+        window.setCategory = UI.setCategory;
+
+        function calculate() {
+            // 1. Inputs
+            let l = parseFloat(document.getElementById('length').value);
+            let w = parseFloat(document.getElementById('width').value);
+            let h = parseFloat(document.getElementById('height').value);
+            let weight = parseFloat(document.getElementById('weight').value);
+            let price = parseFloat(document.getElementById('price').value) || 0;
+            
+            const dimUnit = document.getElementById('dimUnit').value;
+            const weightUnit = document.getElementById('weightUnit').value;
+            const isApparel = document.getElementById('isApparel').value === 'true';
+            const ratePeriod = document.getElementById('ratePeriod').value; // 2025_std, 2025_peak, 2026_new
+
+            if (!l || !w || !h || !weight) {
+                resetDisplay();
+                return;
+            }
+
+            // 2. Normalize (Inches, Lbs)
+            let dims = [l, w, h];
+            if (dimUnit === 'cm') dims = dims.map(d => d / 2.54);
+            // Sort: [Longest, Median, Shortest]
+            dims.sort((a, b) => b - a);
+            let [finalL, finalW, finalH] = dims;
+
+            let finalWeightLb = weight;
+            if (weightUnit === 'kg') finalWeightLb = weight * 2.20462;
+            else if (weightUnit === 'oz') finalWeightLb = weight / 16;
+
+            // 3. Determine Tier
+            let tierData = determineTier(finalL, finalW, finalH, finalWeightLb);
+            let tier = tierData.tier;
+
+            // 4. Billable Weight
+            let dimWeight = (finalL * finalW * finalH) / 139;
+            let billableWeight = 0;
+            
+            // Logic: Small Std uses Unit Weight (mostly). Large Std+ uses max(Unit, Dim).
+            // 2025/2026 logic keeps this consistent.
+            if (tier === 'Small Standard') {
+                billableWeight = finalWeightLb;
+            } else {
+                billableWeight = Math.max(finalWeightLb, dimWeight);
+            }
+
+            // 5. Calculate Fee
+            let result = calculateFee(ratePeriod, tier, billableWeight, isApparel, price);
+
+            // 6. Update UI
+            updateDisplay(result, tierData, finalL, finalW, finalH, finalWeightLb, dimWeight, billableWeight, ratePeriod, isApparel);
+        }
+
+        function determineTier(l, w, h, wt) {
+            // 2025/2026 Tiers
+            // Small Std: <= 15x12x0.75, <= 1lb (16oz)
+            // Large Std: <= 18x14x8, <= 20lb
+            // Large Bulky: <= 59x33x33, <= 50lb, Girth+Len <= 130
+            // Extra Large: > limits above
+            
+            let girth = 2 * (w + h);
+            let gl = l + girth;
+
+            if (wt <= 1 && l <= 15 && w <= 12 && h <= 0.75) {
+                return { tier: 'Small Standard', gl: gl };
+            }
+            if (wt <= 20 && l <= 18 && w <= 14 && h <= 8) {
+                return { tier: 'Large Standard', gl: gl };
+            }
+            if (wt <= 50 && l <= 59 && w <= 33 && h <= 33 && gl <= 130) {
+                return { tier: 'Large Bulky', gl: gl }; // 2025 name. 
+            }
+            // Note: 2026 splits Large Bulky into Small/Large Bulky for some fees, but simplified here to XL logic
+            return { tier: 'Extra Large', gl: gl };
+        }
+
+        function calculateFee(period, tier, weightLb, isApparel, price) {
+            // Step A: Calculate Baseline 2025 Standard Fee
+            let baseFee = get2025BaseFee(tier, weightLb, isApparel);
+            let surcharge = 0;
+            let note = "";
+            let totalFee = 0;
+
+            // Step B: Apply Logic based on Period
+            if (period === '2025_std') {
+                totalFee = baseFee;
+                note = "2025 标准费率";
+            } 
+            else if (period === '2025_peak') {
+                // Peak Surcharges (Oct 15 - Jan 14)
+                if (tier === 'Small Standard') surcharge = 0.19; // Avg
+                else if (tier === 'Large Standard') {
+                    if (weightLb <= 1) surcharge = 0.22;
+                    else surcharge = 0.29; // Avg
+                }
+                else if (tier === 'Large Bulky') surcharge = 1.00; // Approx
+                else surcharge = 2.50; // XL Approx
+                
+                totalFee = baseFee + surcharge;
+                note = "包含 2025 旺季附加费";
+            } 
+            else if (period === '2026_new') {
+                // 2026 Logic: Base 2025 + Delta based on Price
+                // Delta logic from Oct 2025 announcements
+                let delta = 0;
+                
+                if (tier.includes('Small Standard')) {
+                    if (price < 10) delta = 0.12;
+                    else if (price <= 50) delta = 0.25;
+                    else delta = 0.51;
+                } else if (tier.includes('Large Standard')) {
+                    if (price < 10) delta = 0.00; // No change
+                    else if (price <= 50) delta = 0.05;
+                    else delta = 0.31;
+                } else {
+                    // Bulky items - complex changes, using estimates
+                    // Small Bulky decreases, Large Bulky increases for splits.
+                    // We will apply a conservative estimate for general Bulky
+                    if (price > 50) delta = 0.50; 
+                    else delta = 0.20;
+                }
+
+                totalFee = baseFee + delta;
+                surcharge = delta; // Used for display as 'increase'
+                note = "2026 新政 (涨幅基于售价)";
+            }
+
+            // Low Price FBA Check (Simplified)
+            // If price < $10, rates are generally lower. 
+            // For this tool, we assume the BaseFee function returns standard FBA.
+            // In reality, Low Price FBA replaces FBA Small & Light.
+            // We will add a simple discount factor if price < $10 and not 2026 (since 2026 integrates it differently)
+            if (price > 0 && price < 10 && period !== '2026_new') {
+                totalFee -= 0.77; // Roughly the savings for Low Price FBA
+                if (totalFee < 0) totalFee = 2.00; // Floor
+                note += " (已应用低价FBA优惠)";
+            }
+
+            return { total: totalFee, surcharge: surcharge, note: note };
+        }
+
+        function get2025BaseFee(tier, weightLb, isApparel) {
+            // Approximate 2025 Non-Peak Rates (Standard FBA)
+            let wOz = weightLb * 16;
+
+            if (!isApparel) {
+                if (tier === 'Small Standard') {
+                    if (wOz <= 2) return 3.22;
+                    if (wOz <= 4) return 3.45; // Approx
+                    if (wOz <= 8) return 3.65;
+                    if (wOz <= 12) return 3.85;
+                    return 4.05;
+                }
+                if (tier === 'Large Standard') {
+                    if (wOz <= 4) return 4.08;
+                    if (wOz <= 8) return 4.35;
+                    if (wOz <= 12) return 4.55;
+                    if (wOz <= 16) return 5.05;
+                    if (weightLb <= 1.5) return 5.70;
+                    if (weightLb <= 2) return 6.00;
+                    if (weightLb <= 2.5) return 6.45;
+                    if (weightLb <= 3) return 6.85;
+                    // > 3lb
+                    if (weightLb <= 20) {
+                         // $7.25 + $0.08/0.5lb above 3lb
+                         let extra = Math.ceil((weightLb - 3) / 0.5);
+                         return 7.25 + (extra * 0.08);
+                    }
+                }
+                if (tier === 'Large Bulky') {
+                    // ~$9.73 Base + weight
+                    return 9.73 + (Math.ceil(weightLb - 1) * 0.38);
+                }
+                // XL
+                return 26.50 + (Math.ceil(weightLb - 1) * 0.38);
+            } 
+            else {
+                // Apparel Base
+                if (tier === 'Small Standard') return 3.80; // Avg base
+                if (tier === 'Large Standard') {
+                    if (weightLb <= 1) return 5.00;
+                    if (weightLb <= 2) return 6.50;
+                    return 7.50 + ((weightLb - 2) * 0.16);
+                }
+                return 10.00 + (weightLb * 0.38);
+            }
+            return 0;
+        }
+
+        function updateDisplay(result, tierData, l, w, h, actWt, dimWt, billWt, period, isApparel) {
+            document.getElementById('feeDisplay').innerText = '$' + result.total.toFixed(2);
+            
+            // Badges
+            const badgeContainer = document.getElementById('feeBadges');
+            badgeContainer.innerHTML = '';
+            
+            // Type Badge
+            const typeSpan = document.createElement('span');
+            typeSpan.className = isApparel ? "bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-semibold" : "bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-semibold";
+            typeSpan.innerText = isApparel ? "服装类" : "非服装类";
+            badgeContainer.appendChild(typeSpan);
+
+            // Surcharge/Delta Badge
+            if (result.surcharge > 0) {
+                const surSpan = document.createElement('span');
+                surSpan.className = "bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold";
+                let label = period === '2026_new' ? "2026涨幅: +$" : "旺季附加费: +$";
+                surSpan.innerText = label + result.surcharge.toFixed(2);
+                badgeContainer.appendChild(surSpan);
+            }
+
+            // Period Badge logic
+            const periodHint = document.getElementById('periodHint');
+            const seasonBadge = document.getElementById('seasonBadge');
+            
+            if (period === '2025_peak') {
+                seasonBadge.style.display = 'block';
+                seasonBadge.innerText = '2025 旺季费率生效中';
+                seasonBadge.className = 'absolute top-0 right-0 bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-bl-lg';
+                periodHint.innerText = "应用时间：2025年10月15日 - 2026年1月14日";
+            } else if (period === '2026_new') {
+                seasonBadge.style.display = 'block';
+                seasonBadge.innerText = '2026 新政预测';
+                seasonBadge.className = 'absolute top-0 right-0 bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-bl-lg';
+                periodHint.innerText = "生效时间：2026年1月15日起";
+            } else {
+                seasonBadge.style.display = 'none';
+                periodHint.innerText = "标准费率 (非旺季)";
+            }
+
+            // Tier & Weights
+            const tierMap = {
+                'Small Standard': '小号标准尺寸',
+                'Large Standard': '大号标准尺寸',
+                'Large Bulky': '大号大件 (Large Bulky)',
+                'Extra Large': '超大尺寸 (Extra Large)'
+            };
+            document.getElementById('tierDisplay').innerText = tierMap[tierData.tier] || tierData.tier;
+            document.getElementById('dimDisplay').innerText = `L: ${l.toFixed(2)}" | W: ${w.toFixed(2)}" | H: ${h.toFixed(2)}"`;
+            document.getElementById('girthDisplay').innerText = `围长+长 (Girth+Len): ${tierData.gl.toFixed(1)}"`;
+            
+            document.getElementById('billableWeightDisplay').innerText = billWt.toFixed(2) + ' lb';
+            document.getElementById('actualWeightDisplay').innerText = actWt.toFixed(2) + ' lb';
+            document.getElementById('dimWeightDisplay').innerText = dimWt.toFixed(2) + ' lb';
+
+            // Info Box Update
+            const infoList = document.getElementById('infoList');
+            infoList.innerHTML = '';
+            let logicItem = document.createElement('li');
+            logicItem.innerText = result.note;
+            infoList.appendChild(logicItem);
+            
+            if (period === '2026_new') {
+                let li = document.createElement('li');
+                li.innerText = "2026提示：涨幅主要针对标准尺寸商品，且根据售价($10/$50分界)有显著差异。";
+                infoList.appendChild(li);
+            }
+            if (billWt > actWt) {
+                let li = document.createElement('li');
+                li.innerText = "注意：该商品按体积重计费 (Volume Weight)。";
+                infoList.appendChild(li);
+            }
+        }
+
+        function resetDisplay() {
+            document.getElementById('feeDisplay').innerText = "$0.00";
+            document.getElementById('feeBadges').innerHTML = "";
+            document.getElementById('tierDisplay').innerText = "-";
+            document.getElementById('billableWeightDisplay').innerText = "- lb";
+        }
+    </script>
+</body>
+</html>
