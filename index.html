@@ -296,6 +296,8 @@
             // 显示 Toast
             msg.innerText = `正在启动: ${toolName}...`;
             toast.classList.remove('translate-y-20', 'opacity-0');
+                // 这里直接跳转
+            window.location.href = url;
         }
 
         /**
