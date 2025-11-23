@@ -296,14 +296,6 @@
             // 显示 Toast
             msg.innerText = `正在启动: ${toolName}...`;
             toast.classList.remove('translate-y-20', 'opacity-0');
-            
-            // 模拟延迟后跳转（实际项目中请直接使用 window.location.href = url）
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-                // 演示目的，使用 alert 替代真实跳转，您可以取消下面这行的注释来启用真实跳转
-                // window.location.href = url; 
-                console.log(`Navigating to ${url}`);
-            }, 2000);
         }
 
         /**
