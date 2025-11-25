@@ -68,7 +68,7 @@
             </button>
             <div class="h-6 w-px bg-gray-700 mx-2"></div>
             <div class="flex items-center gap-2 text-xs text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20 font-mono">
-                <i class="fas fa-circle text-[8px] animate-pulse"></i> Gemini Pro Vision
+                <i class="fas fa-circle text-[8px] animate-pulse"></i> Gemini 3 Pro
             </div>
         </div>
     </header>
@@ -95,38 +95,42 @@
                     </div>
                 </div>
 
-                <!-- 2. 参考图 (新增功能) -->
+                <!-- 2. 参考图 (多图支持) -->
                 <div class="space-y-2">
                     <label class="text-xs font-bold text-gray-500 uppercase tracking-wider flex justify-between">
                         <span>参考图片 (Image-to-Image)</span>
-                        <i class="fas fa-image text-gray-600"></i>
+                        <div class="flex items-center gap-2">
+                            <span id="imgCount" class="text-[10px] bg-gray-800 px-1.5 rounded text-gray-400 hidden">0/5</span>
+                            <i class="fas fa-images text-gray-600"></i>
+                        </div>
                     </label>
                     
-                    <!-- 文件输入框 (隐藏) -->
-                    <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFile(this)">
+                    <!-- 文件输入框 (隐藏, 添加 multiple) -->
+                    <input type="file" id="fileInput" accept="image/*" multiple class="hidden" onchange="handleFile(this)">
                     
-                    <!-- 上传区域 -->
-                    <div id="uploadZone" onclick="document.getElementById('fileInput').click()" 
-                         class="border border-dashed border-gray-700 bg-gray-900/50 rounded-lg p-4 text-center cursor-pointer hover:border-yellow-500/50 hover:bg-gray-800 transition-all group relative overflow-hidden">
+                    <!-- 上传/预览区域容器 -->
+                    <div class="border border-dashed border-gray-700 bg-gray-900/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/50 hover:bg-gray-800 relative group min-h-[100px] flex flex-col justify-center">
                         
-                        <!-- 无图片状态 -->
-                        <div id="uploadPlaceholder" class="space-y-2">
-                            <i class="fas fa-cloud-upload-alt text-2xl text-gray-600 group-hover:text-yellow-500 transition-colors"></i>
-                            <p class="text-xs text-gray-500">点击上传参考图 (可选)</p>
+                        <!-- 点击触发上传的遮罩 (当有图片时，依然可以点击空白处或添加按钮上传) -->
+                        <div onclick="document.getElementById('fileInput').click()" class="absolute inset-0 cursor-pointer z-0"></div>
+
+                        <!-- 无图片时的提示 -->
+                        <div id="uploadPlaceholder" class="pointer-events-none relative z-10">
+                            <i class="fas fa-cloud-upload-alt text-2xl text-gray-600 mb-2"></i>
+                            <p class="text-xs text-gray-500">点击上传多张图片</p>
+                            <p class="text-[10px] text-gray-600 mt-1">支持 JPG, PNG (Max 5)</p>
                         </div>
 
-                        <!-- 有图片预览状态 -->
-                        <div id="imagePreview" class="hidden flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <img id="thumbImg" src="" class="w-12 h-12 rounded object-cover border border-gray-600">
-                                <div class="text-left">
-                                    <p class="text-xs text-white font-medium">参考图已加载</p>
-                                    <p class="text-[10px] text-gray-500">将作为生成的视觉参考</p>
-                                </div>
-                            </div>
-                            <button onclick="event.stopPropagation(); removeRefImage()" class="w-6 h-6 rounded-full bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors">
-                                <i class="fas fa-times text-xs"></i>
-                            </button>
+                        <!-- 图片预览网格 -->
+                        <div id="previewGrid" class="hidden relative z-20 grid grid-cols-4 gap-2 w-full">
+                            <!-- JS 动态填充图片 -->
+                        </div>
+
+                        <!-- 添加更多按钮 (当有图片时显示) -->
+                        <div id="addMoreBtn" class="hidden mt-3 relative z-20">
+                             <button onclick="document.getElementById('fileInput').click()" class="text-[10px] text-yellow-500 hover:text-yellow-400 border border-yellow-500/30 px-2 py-1 rounded bg-yellow-500/10">
+                                <i class="fas fa-plus mr-1"></i>添加更多
+                             </button>
                         </div>
                     </div>
                 </div>
@@ -136,7 +140,7 @@
                     <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">正向提示词 (Prompt)</label>
                     <textarea id="promptInput" rows="4" 
                         class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-gray-200 focus:border-yellow-400 focus:outline-none focus:ring-1 focus:ring-yellow-400 transition resize-none custom-scrollbar"
-                        placeholder="描述您想生成的画面..."></textarea>
+                        placeholder="描述您想生成的画面... 例如: A futuristic city with flying cars, cyberpunk style"></textarea>
                 </div>
 
                 <!-- 4. 长宽比选择 -->
@@ -259,7 +263,7 @@
     <script>
         // --- 状态管理 ---
         const state = {
-            refImage: null, // 存储参考图数据 { mimeType, data }
+            refImages: [], // 修改为数组: [{ mimeType, data, id }]
             isGenerating: false,
             timerInterval: null
         };
@@ -295,45 +299,102 @@
             }
         }
 
-        // --- UI 逻辑: 图片上传 (来自 banana_2.txt) ---
+        // --- UI 逻辑: 图片上传 (多图) ---
         function handleFile(input) {
-            const file = input.files[0];
-            if (!file) return;
+            const files = Array.from(input.files);
+            if (files.length === 0) return;
 
-            // 大小限制 5MB
-            if (file.size > 5 * 1024 * 1024) {
-                showToast('图片过大 (需 < 5MB)', 'error');
-                return;
+            // 限制最大图片数量，例如 5 张
+            const MAX_IMAGES = 5;
+            const remainingSlots = MAX_IMAGES - state.refImages.length;
+            
+            if (remainingSlots <= 0) {
+                 showToast(`最多支持 ${MAX_IMAGES} 张参考图`, 'error');
+                 input.value = '';
+                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const base64 = e.target.result;
-                const parts = base64.split(',');
-                const mime = parts[0].match(/:(.*?);/)[1];
-                const data = parts[1];
+            const filesToProcess = files.slice(0, remainingSlots);
+            let processedCount = 0;
 
-                state.refImage = { mimeType: mime, data: data };
-                
-                // 更新预览 UI
-                document.getElementById('thumbImg').src = base64;
-                document.getElementById('uploadPlaceholder').classList.add('hidden');
-                document.getElementById('imagePreview').classList.remove('hidden');
-                showToast('参考图已加载');
-            };
-            reader.readAsDataURL(file);
-            input.value = ''; // 允许重复选择
+            filesToProcess.forEach(file => {
+                // 大小限制 5MB
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast(`文件 ${file.name} 过大 (需 < 5MB)`, 'error');
+                    processedCount++;
+                    if (processedCount === filesToProcess.length) renderPreviews();
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64 = e.target.result;
+                    const parts = base64.split(',');
+                    const mime = parts[0].match(/:(.*?);/)[1];
+                    const data = parts[1];
+
+                    state.refImages.push({
+                        id: Date.now() + Math.random(), // 唯一ID用于删除
+                        mimeType: mime,
+                        data: data,
+                        previewUrl: base64
+                    });
+
+                    processedCount++;
+                    if (processedCount === filesToProcess.length) {
+                        renderPreviews();
+                        showToast(`已加载 ${filesToProcess.length} 张图片`);
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            input.value = ''; // 允许重复选择相同文件
         }
 
-        function removeRefImage() {
-            state.refImage = null;
-            document.getElementById('uploadPlaceholder').classList.remove('hidden');
-            document.getElementById('imagePreview').classList.add('hidden');
-            document.getElementById('thumbImg').src = '';
-            showToast('参考图已移除');
+        function removeRefImage(id) {
+            state.refImages = state.refImages.filter(img => img.id !== id);
+            renderPreviews();
         }
 
-        // --- 核心 API 调用逻辑 (改为 banana_2.txt 逻辑) ---
+        function renderPreviews() {
+            const grid = document.getElementById('previewGrid');
+            const placeholder = document.getElementById('uploadPlaceholder');
+            const addMoreBtn = document.getElementById('addMoreBtn');
+            const imgCount = document.getElementById('imgCount');
+
+            // 更新计数器
+            imgCount.textContent = `${state.refImages.length}/5`;
+            
+            if (state.refImages.length > 0) {
+                imgCount.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                grid.classList.remove('hidden');
+                addMoreBtn.classList.remove('hidden');
+                grid.innerHTML = ''; // 清空
+
+                state.refImages.forEach((img, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'relative group aspect-square rounded overflow-hidden border border-gray-700 bg-gray-900';
+                    div.innerHTML = `
+                        <img src="${img.previewUrl}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button onclick="event.stopPropagation(); removeRefImage(${img.id})" class="text-white hover:text-red-400 p-1">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(div);
+                });
+            } else {
+                imgCount.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                grid.classList.add('hidden');
+                addMoreBtn.classList.add('hidden');
+            }
+        }
+
+        // --- 核心 API 调用逻辑 (支持多图) ---
         async function generateImage() {
             if (state.isGenerating) return;
 
@@ -351,31 +412,41 @@
             startLoading();
 
             try {
-                // 构造 URL (参考 banana_2.txt)
-                // 使用 gemini-2.5-flash-preview-09-2025 模型，这是比较稳定的图像生成/预览模型
+                // 构造 URL
                 const url = `${host}/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${key}`;
 
-                // 构造 Payload (支持多模态 parts)
+                // 构造 Parts 数组
                 const parts = [];
                 
-                // 1. 文本
+                // 1. 文本 (Prompt)
                 parts.push({ text: prompt });
                 
-                // 2. 图片 (如果存在)
-                if (state.refImage) {
-                    parts.push({
-                        inlineData: {
-                            mimeType: state.refImage.mimeType,
-                            data: state.refImage.data
-                        }
+                // 2. 图片 (遍历所有参考图，生成多个 inline_data 块)
+                if (state.refImages && state.refImages.length > 0) {
+                    state.refImages.forEach(img => {
+                        parts.push({
+                            inline_data: {
+                                mime_type: img.mimeType,
+                                data: img.data
+                            }
+                        });
                     });
                 }
 
+                // 构造 Payload
                 const payload = {
-                    contents: [{ parts: parts }],
+                    contents: [
+                        {
+                            role: "user",
+                            parts: parts
+                        }
+                    ],
                     generationConfig: {
-                        responseModalities: ["IMAGE"], // 强制返回图片
-                        aspectRatio: aspectRatio
+                        responseModalities: ["TEXT", "IMAGE"],
+                        imageConfig: {
+                            aspectRatio: aspectRatio,
+                            imageSize: "1K"
+                        }
                     }
                 };
 
@@ -393,10 +464,18 @@
 
                 const data = await response.json();
                 
-                // 解析结果 (参考 banana_2.txt 的路径)
-                const base64Img = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+                // 解析结果
+                const contentParts = data.candidates?.[0]?.content?.parts || [];
+                const imagePart = contentParts.find(p => p.inline_data || p.inlineData);
+                const base64Img = imagePart?.inline_data?.data || imagePart?.inlineData?.data;
 
-                if (!base64Img) throw new Error('API 未返回图片数据 (可能被安全策略拦截)');
+                if (!base64Img) {
+                    const textPart = contentParts.find(p => p.text);
+                    if (textPart) {
+                        throw new Error(`模型仅返回了文本: ${textPart.text.substring(0, 50)}...`);
+                    }
+                    throw new Error('API 未返回图片数据');
+                }
 
                 showResult(`data:image/jpeg;base64,${base64Img}`);
 
