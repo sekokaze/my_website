@@ -182,7 +182,8 @@
             <div class="hidden md:block text-gray-500 text-sm">Select a module to launch</div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- 更新了 Grid 布局以适应4个卡片：在平板上2列，在大屏幕上4列 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             
             <!-- 工具 1: AI 视频制作 -->
             <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
@@ -191,7 +192,7 @@
                 </div>
                 <h3 class="text-2xl font-bold mb-3 group-hover:text-cyan-400 transition-colors">AI 图片视频创作</h3>
                 <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
-                    利用生成式 AI 技术，输入脚本或产品描述，即可一键生成高质量营销短视频，支持多语言配音与字幕。
+                    利用生成式 AI 技术，输入脚本或产品描述，一键生成高质量营销短视频。
                 </p>
                 <ul class="text-xs text-gray-500 mb-8 space-y-2">
                     <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 智能图片生成</li>
@@ -209,36 +210,56 @@
                 </div>
                 <h3 class="text-2xl font-bold mb-3 group-hover:text-orange-400 transition-colors">FBA 费用计算器</h3>
                 <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
-                    实时同步亚马逊最新物流费率表。输入尺寸与重量，毫秒级精准计算 FBA 派送成本与预估利润率。
+                    实时同步亚马逊最新物流费率表。精准计算 FBA 派送成本与预估利润率。
                 </p>
                 <ul class="text-xs text-gray-500 mb-8 space-y-2">
                     <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i>旺季派送费计算</li>
-                    <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 尺寸分段优化建议</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 尺寸分段建议</li>
                 </ul>
                 <button onclick="navigateTo('fba-calc')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #f97316;">
                     开始计算 <i class="fa-solid fa-calculator ml-2"></i>
                 </button>
             </div>
 
-            <!-- 工具 3: 亚马逊广告批量创建 (开发中状态) -->
+            <!-- 工具 3: Banana AI (新增) -->
+            <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
+                <!-- 黄色渐变背景 -->
+                <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                    <!-- 使用 Banana 图标 (SVG) -->
+                    <svg class="w-8 h-8 text-white fill-current" viewBox="0 0 512 512">
+                        <path d="M428.3 391.6c-7.2-5.7-16-8.3-24.8-7-78.2 11.2-151.7-14.5-202.4-64.8-51.5-51-69.8-124.5-57.5-204.9 1.2-8.1-1.3-16.4-7-22.9-5.7-6.6-14.4-10.1-23.1-9.4-46.7 4.1-82.9 44.8-79.8 91.9 3.7 57.1 27.2 109.2 65.7 149.3 41.2 42.9 96.5 71.7 154.5 81.6 47.5 8.1 91.8-9.1 127.4-37.9 7.2-5.8 10-15.6 6.2-24.3-3.7-8.8-12.4-14.1-21.6-12.5-54.8 9.3-102.4-5-137.3-33.5-32.9-26.9-53.1-67.8-56.4-112.7-.5-7 5.2-12.8 12.2-12.8 6.4 0 11.9 4.8 12.7 11.2 2.8 38 19.8 72.8 47.7 95.5 29.4 24.1 69.6 36.3 115.8 28.4 9-1.6 18.1 1.1 24.8 7.2 6.7 6.2 9.9 15.5 8.3 24.6z"/>
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-bold mb-3 group-hover:text-yellow-400 transition-colors">Nano Banana Pro</h3>
+                <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
+                    下一代商业视觉生成助手。无需摄影棚，通过AI精准控制光影与材质，低成本批量产出电商级产品图与营销海报。
+                </p>
+                <ul class="text-xs text-gray-500 mb-8 space-y-2">
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 商业级视觉直出</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 场景化营销生成</li>
+                </ul>
+                <!-- 自定义按钮颜色 (黄色) -->
+                <button onclick="navigateTo('banana-ai')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #fbbf24;">
+                    立即体验 <i class="fa-solid fa-bolt ml-2"></i>
+                </button>
+            </div>
+
+            <!-- 工具 4: 亚马逊广告批量创建 (开发中) -->
             <div class="glass-card rounded-xl p-8 flex flex-col h-full group relative border-gray-700 border-dashed">
-                <!-- 开发中标签 -->
                 <div class="absolute top-4 right-4 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-[10px] px-2 py-1 rounded font-tech tracking-wider animate-pulse">
                     DEV MODE
                 </div>
-
                 <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center mb-6 shadow-lg grayscale group-hover:grayscale-0 transition-all duration-500">
                     <i class="fa-solid fa-bullhorn text-white text-2xl"></i>
                 </div>
                 <h3 class="text-2xl font-bold mb-3 text-gray-400 group-hover:text-emerald-400 transition-colors">广告批量管理</h3>
                 <p class="text-gray-500 text-sm mb-6 flex-grow leading-relaxed">
-                    功能正在紧密开发中。未来将支持通过规则引擎批量创建数千个广告活动，自动拓词与竞价。
+                    通过规则引擎批量创建数千个广告活动，自动拓词与竞价。
                 </p>
                 <ul class="text-xs text-gray-600 mb-8 space-y-2">
-                    <li class="flex items-center"><i class="fa-solid fa-lock text-gray-600 mr-2"></i> Excel 批量导入 (开发中)</li>
-                    <li class="flex items-center"><i class="fa-solid fa-lock text-gray-600 mr-2"></i> 智能关键词分组 (开发中)</li>
+                    <li class="flex items-center"><i class="fa-solid fa-lock text-gray-600 mr-2"></i> 批量导入</li>
+                    <li class="flex items-center"><i class="fa-solid fa-lock text-gray-600 mr-2"></i> 智能分组</li>
                 </ul>
-                <!-- 禁用按钮 -->
                 <button class="py-3 w-full rounded font-bold text-sm border border-gray-700 text-gray-500 cursor-not-allowed bg-white/5 backdrop-blur-sm" disabled>
                     仍在开发 <i class="fa-solid fa-screwdriver-wrench ml-2"></i>
                 </button>
@@ -261,7 +282,7 @@
         </div>
     </footer>
 
-    <!-- Toast 提示框 (模拟跳转) -->
+    <!-- Toast 提示框 -->
     <div id="toast" class="fixed bottom-10 right-10 transform translate-y-20 opacity-0 transition-all duration-300 z-50 bg-slate-800 border border-cyan-500/50 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3">
         <div class="animate-spin h-5 w-5 border-2 border-cyan-500 border-t-transparent rounded-full"></div>
         <div>
@@ -287,6 +308,11 @@
                     toolName = "FBA 运费计算器";
                     url = '/tools/fba-calculator';
                     break;
+                // 新增 Banana AI 跳转逻辑
+                case 'banana-ai':
+                    toolName = "Banana AI";
+                    url = 'tools/banana-ai.html';
+                    break;
                 case 'ads-manager':
                     toolName = "广告批量创建系统";
                     url = '/tools/ads-manager';
@@ -296,13 +322,15 @@
             // 显示 Toast
             msg.innerText = `正在启动: ${toolName}...`;
             toast.classList.remove('translate-y-20', 'opacity-0');
-                // 这里直接跳转
-            window.open(url, '_blank');
+            
+            // 延迟跳转以显示动画
+            setTimeout(() => {
+                 window.open(url, '_blank');
+            }, 800);
         }
 
         /**
          * 粒子网络背景动画 (Canvas)
-         * 模拟神经网络/脑暴连接效果
          */
         const canvas = document.getElementById('particle-canvas');
         const ctx = canvas.getContext('2d');
@@ -310,10 +338,9 @@
         let width, height;
         let particles = [];
         
-        // 调整配置
-        const particleCount = 60; // 粒子数量
-        const connectionDistance = 150; // 连线距离
-        const mouseDistance = 200; // 鼠标互动距离
+        const particleCount = 60; 
+        const connectionDistance = 150; 
+        const mouseDistance = 200; 
 
         let mouse = { x: null, y: null };
 
@@ -336,18 +363,16 @@
                 this.vx = (Math.random() - 0.5) * 0.5;
                 this.vy = (Math.random() - 0.5) * 0.5;
                 this.size = Math.random() * 2 + 1;
-                this.color = Math.random() > 0.5 ? '#00f0ff' : '#7000ff'; // Cyan or Purple
+                this.color = Math.random() > 0.5 ? '#00f0ff' : '#7000ff'; 
             }
 
             update() {
                 this.x += this.vx;
                 this.y += this.vy;
 
-                // 边界反弹
                 if (this.x < 0 || this.x > width) this.vx *= -1;
                 if (this.y < 0 || this.y > height) this.vy *= -1;
 
-                // 鼠标互动
                 if (mouse.x != null) {
                     let dx = mouse.x - this.x;
                     let dy = mouse.y - this.y;
@@ -358,7 +383,7 @@
                         const force = (mouseDistance - distance) / mouseDistance;
                         const directionX = forceDirectionX * force * 0.6;
                         const directionY = forceDirectionY * force * 0.6;
-                        this.vx += directionX; // 稍微被鼠标吸引
+                        this.vx += directionX; 
                         this.vy += directionY;
                     }
                 }
@@ -387,7 +412,6 @@
                 particles[i].update();
                 particles[i].draw();
 
-                // 连线逻辑
                 for (let j = i; j < particles.length; j++) {
                     let dx = particles[i].x - particles[j].x;
                     let dy = particles[i].y - particles[j].y;
@@ -396,7 +420,7 @@
                     if (distance < connectionDistance) {
                         ctx.beginPath();
                         let opacity = 1 - (distance / connectionDistance);
-                        ctx.strokeStyle = `rgba(100, 116, 139, ${opacity * 0.2})`; // 连线颜色
+                        ctx.strokeStyle = `rgba(100, 116, 139, ${opacity * 0.2})`; 
                         ctx.lineWidth = 1;
                         ctx.moveTo(particles[i].x, particles[i].y);
                         ctx.lineTo(particles[j].x, particles[j].y);
