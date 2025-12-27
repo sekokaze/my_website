@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER-CONVERTER // 赛博图片转换核心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- 引入科技感字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['"Share Tech Mono"', 'monospace'],
+                    },
+                    colors: {
+                        cyber: {
+                            black: '#050505',
+                            dark: '#0a0a12',
+                            panel: '#13131f',
+                            cyan: '#00f3ff',
+                            pink: '#ff00ff',
+                            green: '#00ff9d',
+                            border: 'rgba(0, 243, 255, 0.2)'
+                        }
+                    },
+                    boxShadow: {
+                        'neon-cyan': '0 0 5px #00f3ff, 0 0 10px rgba(0, 243, 255, 0.5)',
+                        'neon-pink': '0 0 5px #ff00ff, 0 0 10px rgba(255, 0, 255, 0.5)',
+                        'neon-green': '0 0 5px #00ff9d, 0 0 10px rgba(0, 255, 157, 0.5)',
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'scan': 'scan 3s linear infinite',
+                    },
+                    keyframes: {
+                        scan: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(100%)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #050505;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.1) 0%, transparent 50%),
+                linear-gradient(rgba(0, 255, 157, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 157, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
+        }
+        
+        /* 赛博滚动条 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a12; }
+        ::-webkit-scrollbar-thumb { background: #1f2937; border: 1px solid #00f3ff; }
+        ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
+
+        .drag-active {
+            border-color: #00f3ff !important;
+            box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.2);
+            background-color: rgba(0, 243, 255, 0.05) !important;
+        }
+
+        /* 故障风滑块 */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 10px;
+            background: #00f3ff;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px #00f3ff;
+            border: 1px solid white;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #1f2937;
+            border: 1px solid #374151;
+        }
+
+        .cyber-border {
+            position: relative;
+            background: #13131f;
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        .corner-deco::before, .corner-deco::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border: 1px solid #00f3ff;
+            transition: all 0.3s ease;
+        }
+        .corner-deco::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .corner-deco::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent, rgba(0, 243, 255, 0.1), transparent);
+            pointer-events: none;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body class="text-gray-300 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- 返回主页按钮 -->
+    <a href="/" class="fixed top-4 left-4 z-50 flex items-center gap-2 px-4 py-2 border border-cyber-cyan/30 bg-black/80 text-cyber-cyan text-sm font-bold font-mono uppercase tracking-wider hover:bg-cyber-cyan/10 hover:shadow-neon-cyan hover:text-white transition-all duration-300 backdrop-blur-md group">
+        <i class="fas fa-chevron-left text-xs group-hover:-translate-x-1 transition-transform"></i>
+        <span>HOME // 主页</span>
+    </a>
+
+    <!-- 装饰背景光 -->
+    <div class="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyber-cyan to-transparent opacity-50"></div>
+
+    <!-- 主容器 -->
+    <div class="w-full max-w-3xl cyber-border corner-deco p-1 relative overflow-hidden group">
+        <!-- 扫描线动画 -->
+        <div class="scan-line hidden group-hover:block animate-scan"></div>
+
+        <!-- 头部 -->
+        <div class="bg-cyber-dark/80 border-b border-cyber-border p-6 text-center relative z-10">
+            <h1 class="text-3xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan to-blue-500 drop-shadow-[0_0_5px_rgba(0,243,255,0.8)]">
+                <i class="fas fa-microchip mr-2"></i>CYBER-CONVERTER
+            </h1>
+            <p class="text-cyber-cyan/60 text-xs mt-2 tracking-[0.2em] uppercase">>> System Ready // 系统就绪 [本地安全处理] <<</p>
+        </div>
+
+        <div class="p-6 space-y-6 bg-cyber-dark/50 relative z-10 backdrop-blur-sm">
+
+            <!-- 1. 上传区域 -->
+            <div id="dropZone" class="border-2 border-dashed border-gray-700 bg-gray-900/50 rounded-none p-8 text-center transition-all duration-300 cursor-pointer hover:border-cyber-cyan hover:shadow-neon-cyan relative min-h-[200px] flex flex-col justify-center items-center group">
+                <input type="file" id="fileInput" accept="image/*" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                
+                <div id="uploadPrompt" class="transition-transform duration-300 group-hover:scale-105">
+                    <div class="w-20 h-20 border border-cyber-cyan/30 bg-cyber-cyan/5 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:shadow-neon-cyan group-hover:bg-cyber-cyan/10 transition-all">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-cyber-cyan"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-200">INITIALIZE UPLOAD <span class="text-base font-normal text-cyber-cyan/70">// 初始化上传</span></h3>
+                    <p class="text-sm text-cyber-cyan/50 mt-2 font-mono">[ 拖拽文件或点击执行 // DRAG OR CLICK TO EXECUTE ]</p>
+                </div>
+
+                <!-- 预览区 -->
+                <div id="filePreview" class="hidden w-full z-20">
+                    <div class="flex justify-between items-center mb-4 px-1 border-b border-gray-800 pb-2">
+                        <span class="text-sm font-bold text-cyber-cyan uppercase">>> Target_Buffer [目标缓冲]: <span id="fileCount" class="text-white">0</span> FILES</span>
+                        <div class="flex gap-3 relative z-30">
+                             <button id="clearBtn" class="text-sm text-red-500 hover:text-red-400 hover:shadow-neon-pink px-3 py-1 border border-red-900/50 bg-red-900/10 transition-all uppercase">
+                                <i class="fas fa-trash-alt mr-1"></i>Purge / 清空
+                            </button>
+                            <button id="addMoreBtn" class="text-sm text-cyber-cyan hover:text-white hover:shadow-neon-cyan px-3 py-1 border border-cyber-cyan/30 bg-cyber-cyan/10 transition-all uppercase opacity-50 cursor-not-allowed">
+                                <i class="fas fa-plus mr-1"></i>Re-Scan / 重选
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="thumbnailGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-60 overflow-y-auto p-1 custom-scrollbar">
+                        <!-- 缩略图将插入这里 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 控制面板 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border border-gray-800 bg-gray-900/30">
+                <!-- 格式选择 -->
+                <div>
+                    <label class="block text-sm font-bold text-cyber-cyan mb-2 uppercase tracking-wider">
+                        >> Output_Format // 输出格式
+                    </label>
+                    <div class="relative">
+                        <select id="formatSelect" class="block w-full pl-3 pr-10 py-2 text-base bg-black border border-gray-700 text-gray-300 focus:outline-none focus:border-cyber-cyan focus:ring-1 focus:ring-cyber-cyan focus:shadow-neon-cyan transition-all appearance-none rounded-none font-mono">
+                            <option value="image/jpeg">JPG :: JPEG 协议</option>
+                            <option value="image/png">PNG :: 无损模式 (Lossless)</option>
+                            <option value="image/webp" selected>WebP :: 高压缩 (推荐/REC)</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-cyber-cyan">
+                            <i class="fas fa-caret-down"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 质量滑块 -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-bold text-cyber-cyan uppercase tracking-wider">
+                            >> Compression_Rate // 压缩率
+                        </label>
+                        <span id="qualityDisplay" class="text-sm font-mono text-cyber-pink border border-cyber-pink/30 px-2 bg-cyber-pink/5 shadow-[0_0_5px_rgba(255,0,255,0.3)]">0.8</span>
+                    </div>
+                    <input type="range" id="qualityRange" min="0.1" max="1.0" step="0.05" value="0.8" class="w-full">
+                    <p id="qualityHint" class="text-xs text-gray-500 mt-1 font-mono uppercase text-right">数值越小体积越小 // Lower val = Smaller Size</p>
+                </div>
+            </div>
+
+            <!-- 3. 执行按钮 -->
+            <button id="convertBtn" class="w-full relative overflow-hidden group bg-transparent border border-cyber-cyan text-cyber-cyan font-bold py-4 px-4 transition-all duration-200 hover:bg-cyber-cyan hover:text-black hover:shadow-neon-cyan disabled:opacity-50 disabled:cursor-not-allowed">
+                <div class="absolute inset-0 w-full h-full bg-cyber-cyan/20 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out"></div>
+                <div class="relative flex justify-center items-center gap-2 uppercase tracking-widest text-lg">
+                    <span id="btnText"><i class="fas fa-cogs mr-2"></i>Execute_Conversion // 执行转换</span>
+                    <i id="loader" class="fas fa-circle-notch fa-spin hidden"></i>
+                    <span id="progressText" class="hidden text-sm"></span>
+                </div>
+            </button>
+
+            <!-- 4. 结果终端 -->
+            <div id="resultSection" class="hidden border-t border-gray-800 pt-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-base font-bold text-cyber-green flex items-center uppercase tracking-wider drop-shadow-[0_0_5px_rgba(0,255,157,0.5)]">
+                        <i class="fas fa-terminal mr-2"></i> Process_Complete // 处理完成
+                    </h3>
+                    <button id="downloadZipBtn" class="bg-gray-900 border border-cyber-green text-cyber-green hover:bg-cyber-green hover:text-black hover:shadow-neon-green text-sm font-bold py-2 px-4 transition-all uppercase flex items-center">
+                        <i class="fas fa-file-archive mr-2"></i> Download_All // 打包下载 (.ZIP)
+                    </button>
+                </div>
+                
+                <!-- 结果列表 -->
+                <div class="border border-gray-800 bg-black/50 font-mono text-sm">
+                    <div class="grid grid-cols-12 bg-gray-900 p-2 text-gray-500 uppercase tracking-wider border-b border-gray-800">
+                        <div class="col-span-5">File_Name / 文件名</div>
+                        <div class="col-span-4 text-center">Diff / 压缩比</div>
+                        <div class="col-span-3 text-right">Action / 操作</div>
+                    </div>
+                    <div id="resultList" class="divide-y divide-gray-800 max-h-60 overflow-y-auto custom-scrollbar">
+                        <!-- 动态行 -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        
+        <!-- 底部装饰 -->
+        <div class="absolute bottom-2 right-4 text-xs text-gray-700 font-mono">
+            SYS.VER.2.0.77 // NO_SERVER_UPLINK [离线模式]
+        </div>
+    </div>
+
+    <script>
+        // DOM 元素引用
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadPrompt = document.getElementById('uploadPrompt');
+        const filePreview = document.getElementById('filePreview');
+        const thumbnailGrid = document.getElementById('thumbnailGrid');
+        const fileCount = document.getElementById('fileCount');
+        const clearBtn = document.getElementById('clearBtn');
+        const addMoreBtn = document.getElementById('addMoreBtn'); 
+        
+        const formatSelect = document.getElementById('formatSelect');
+        const qualityRange = document.getElementById('qualityRange');
+        const qualityDisplay = document.getElementById('qualityDisplay');
+        const qualityHint = document.getElementById('qualityHint');
+        
+        const convertBtn = document.getElementById('convertBtn');
+        const btnText = document.getElementById('btnText');
+        const loader = document.getElementById('loader');
+        const progressText = document.getElementById('progressText');
+        
+        const resultSection = document.getElementById('resultSection');
+        const resultList = document.getElementById('resultList');
+        const downloadZipBtn = document.getElementById('downloadZipBtn');
+
+        // 状态管理
+        let currentFiles = [];
+        let convertedFiles = [];
+
+        // 工具函数
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // 拖拽处理
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-active'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-active'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            const validFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            
+            if (validFiles.length === 0) {
+                alert('ERROR: INVALID_FILE_TYPE_DETECTED // 错误：检测到无效文件类型');
+                return;
+            }
+
+            currentFiles = validFiles;
+            updatePreviewUI();
+            resultSection.classList.add('hidden');
+            convertedFiles = [];
+        }
+
+        function updatePreviewUI() {
+            uploadPrompt.classList.add('hidden');
+            filePreview.classList.remove('hidden');
+            fileCount.textContent = currentFiles.length;
+            thumbnailGrid.innerHTML = '';
+
+            currentFiles.forEach((file) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const div = document.createElement('div');
+                    div.className = "relative group aspect-square bg-gray-900 border border-gray-700 overflow-hidden hover:border-cyber-cyan transition-colors";
+                    div.innerHTML = `
+                        <img src="${e.target.result}" class="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" alt="preview">
+                        <div class="absolute inset-0 bg-scan-lines opacity-20 pointer-events-none"></div>
+                        <div class="absolute bottom-0 left-0 right-0 bg-black/80 text-cyber-cyan text-xs px-1 py-1 truncate font-mono border-t border-cyber-cyan/20">
+                            ${file.name}
+                        </div>
+                    `;
+                    thumbnailGrid.appendChild(div);
+                };
+            });
+            
+            fileInput.classList.add('pointer-events-none');
+            addMoreBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            addMoreBtn.classList.add('cursor-pointer');
+        }
+
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetAll();
+        });
+
+        addMoreBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.value = '';
+            fileInput.classList.remove('pointer-events-none');
+            fileInput.click();
+        });
+
+        function resetAll() {
+            currentFiles = [];
+            convertedFiles = [];
+            fileInput.value = '';
+            
+            uploadPrompt.classList.remove('hidden');
+            filePreview.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            thumbnailGrid.innerHTML = '';
+            fileInput.classList.remove('pointer-events-none');
+            addMoreBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            addMoreBtn.classList.remove('cursor-pointer');
+            
+            resetConvertBtn();
+        }
+
+        qualityRange.addEventListener('input', (e) => {
+            qualityDisplay.textContent = e.target.value;
+        });
+
+        formatSelect.addEventListener('change', (e) => {
+            const isPng = e.target.value === 'image/png';
+            qualityRange.disabled = isPng;
+            if (isPng) {
+                qualityRange.parentElement.classList.add('opacity-50');
+                qualityHint.textContent = 'PNG :: LOSSLESS (FIXED) // 无损模式';
+                qualityDisplay.textContent = 'N/A';
+            } else {
+                qualityRange.parentElement.classList.remove('opacity-50');
+                qualityHint.textContent = '数值越小体积越小 // Lower val = Smaller Size';
+                qualityDisplay.textContent = qualityRange.value;
+            }
+        });
+
+        convertBtn.addEventListener('click', async () => {
+            if (currentFiles.length === 0) return;
+
+            convertBtn.disabled = true;
+            btnText.textContent = 'PROCESSING // 处理中...';
+            loader.classList.remove('hidden');
+            progressText.classList.remove('hidden');
+            
+            resultSection.classList.remove('hidden');
+            resultList.innerHTML = '';
+            downloadZipBtn.classList.add('hidden');
+
+            const targetFormat = formatSelect.value;
+            const quality = parseFloat(qualityRange.value);
+            
+            convertedFiles = [];
+
+            for (let i = 0; i < currentFiles.length; i++) {
+                const file = currentFiles[i];
+                progressText.textContent = `[${i + 1}/${currentFiles.length}]`;
+                
+                try {
+                    const result = await processImage(file, targetFormat, quality);
+                    convertedFiles.push(result);
+                    appendResultRow(result);
+                } catch (err) {
+                    console.error("Conversion Error", file.name, err);
+                    appendErrorRow(file.name);
+                }
+            }
+
+            resetConvertBtn();
+            if (convertedFiles.length > 0) {
+                downloadZipBtn.classList.remove('hidden');
+            }
+        });
+
+        function resetConvertBtn() {
+            convertBtn.disabled = false;
+            btnText.innerHTML = '<i class="fas fa-cogs mr-2"></i>Execute_Conversion // 执行转换';
+            loader.classList.add('hidden');
+            progressText.classList.add('hidden');
+        }
+
+        function processImage(file, format, quality) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+
+                        if (format === 'image/jpeg') {
+                            ctx.fillStyle = '#FFFFFF';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        }
+                        ctx.drawImage(img, 0, 0);
+
+                        canvas.toBlob((blob) => {
+                            if (!blob) reject(new Error('Blob generation failed'));
+                            
+                            const ext = format.split('/')[1].replace('jpeg', 'jpg');
+                            const originalNameBase = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                            const newFileName = `${originalNameBase}.${ext}`;
+                            
+                            resolve({
+                                originalName: file.name,
+                                originalSize: file.size,
+                                newBlob: blob,
+                                newSize: blob.size,
+                                newFileName: newFileName
+                            });
+                        }, format, quality);
+                    };
+                    img.onerror = reject;
+                };
+                reader.onerror = reject;
+            });
+        }
+
+        function appendResultRow(data) {
+            const savedSize = data.originalSize - data.newSize;
+            const savedPercent = ((savedSize / data.originalSize) * 100).toFixed(1);
+            const isSaved = savedSize > 0;
+            
+            const url = URL.createObjectURL(data.newBlob);
+
+            const div = document.createElement('div');
+            div.className = "grid grid-cols-12 p-3 items-center hover:bg-gray-800/50 transition-colors border-l-2 border-transparent hover:border-cyber-cyan";
+            div.innerHTML = `
+                <div class="col-span-5 truncate pr-2 text-gray-300" title="${data.originalName}">
+                    <div class="font-bold text-cyber-cyan/90 text-sm">${data.newFileName}</div>
+                    <div class="text-xs text-gray-600 font-mono mt-1">SRC: ${formatBytes(data.originalSize)}</div>
+                </div>
+                <div class="col-span-4 text-center">
+                    <div class="font-bold ${isSaved ? 'text-cyber-green' : 'text-orange-500'} text-sm">
+                        ${formatBytes(data.newSize)}
+                    </div>
+                    <div class="text-xs ${isSaved ? 'text-green-800' : 'text-orange-800'} bg-black/30 inline-block px-2 py-0.5 rounded mt-1">
+                        ${isSaved ? `▼ ${savedPercent}%` : '▲ INCREASE / 变大'}
+                    </div>
+                </div>
+                <div class="col-span-3 text-right">
+                    <a href="${url}" download="${data.newFileName}" class="inline-block text-cyber-cyan hover:text-white hover:shadow-neon-cyan p-2 border border-cyber-cyan/30 rounded-none transition-all" title="DOWNLOAD / 下载">
+                        <i class="fas fa-download text-lg"></i>
+                    </a>
+                </div>
+            `;
+            resultList.appendChild(div);
+        }
+
+        function appendErrorRow(name) {
+            const div = document.createElement('div');
+            div.className = "p-2 text-red-500 bg-red-900/20 border-l-2 border-red-500";
+            div.textContent = `>> ERROR: ${name} FAILED // 失败`;
+            resultList.appendChild(div);
+        }
+
+        downloadZipBtn.addEventListener('click', () => {
+            if (convertedFiles.length === 0) return;
+            const zip = new JSZip();
+            convertedFiles.forEach(item => {
+                zip.file(item.newFileName, item.newBlob);
+            });
+            zip.generateAsync({type:"blob"}).then(function(content) {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = "CYBER_CONVERTED_BATCH.zip";
+                link.click();
+            });
+        });
+    </script>
+</body>
+</html>
