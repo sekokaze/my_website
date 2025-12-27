@@ -289,8 +289,11 @@
                 <input type="text" id="danmaku-input" placeholder="输入新年祝福发送弹幕..." 
                     class="cyber-input w-full py-3 pl-10 pr-4 rounded bg-opacity-20 bg-black text-white focus:bg-opacity-40 transition">
             </div>
-            <button onclick="sendUserDanmaku()" class="cyber-btn px-6 py-3 rounded hover:scale-105">
+            <button onclick="sendUserDanmaku()" class="cyber-btn px-6 py-3 rounded hover:scale-105 whitespace-nowrap">
                 发送 <i class="fas fa-paper-plane ml-1"></i>
+            </button>
+            <button onclick="window.location.href='/'" class="cyber-btn px-4 py-3 rounded hover:scale-105 whitespace-nowrap" style="background: var(--neon-cyan); color: black;">
+                主页 <i class="fas fa-home ml-1"></i>
             </button>
         </div>
         
