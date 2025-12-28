@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER-XMAS // SYSTEM ONLINE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --neon-green: #00ff41;
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --dark-bg: #050505;
+            --grid-color: rgba(0, 243, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: var(--dark-bg);
+            /* 科技感网格背景 */
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center bottom;
+            color: var(--neon-blue);
+            overflow: hidden;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* --- 故障文字效果 --- */
+        .glitch-title {
+            font-family: 'Orbitron', sans-serif;
+            position: relative;
+            text-shadow: 2px 2px 0px var(--neon-pink), -2px -2px 0px var(--neon-green);
+            animation: glitch-skew 1s infinite linear alternate-reverse;
+        }
+        .glitch-title::before, .glitch-title::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .glitch-title::before {
+            left: 2px;
+            text-shadow: -1px 0 #ff00c1;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+        .glitch-title::after {
+            left: -2px;
+            text-shadow: -1px 0 #00fff9;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+
+        /* --- 全息圣诞树 --- */
+        .tree-container {
+            position: relative;
+            width: 300px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            z-index: 10;
+            /* 整体全息发光 */
+            filter: drop-shadow(0 0 10px var(--neon-green));
+        }
+
+        .star {
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 40px solid var(--neon-pink);
+            position: relative;
+            z-index: 5;
+            margin-bottom: -10px;
+            animation: pulse-star 1.5s infinite alternate;
+        }
+        .star::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 40px solid var(--neon-pink);
+            top: 12px;
+            left: -15px;
+        }
+
+        /* 树层 - 线框风格 */
+        .layer {
+            width: 0;
+            height: 0;
+            border-left: solid transparent;
+            border-right: solid transparent;
+            border-bottom: solid rgba(0, 255, 65, 0.2); /* 半透明填充 */
+            position: relative;
+            margin-bottom: -30px;
+        }
+        
+        /* 扫描线效果伪元素 */
+        .layer::after {
+            content: '';
+            position: absolute;
+            left: -50%; /* 修正绝对定位中心 */
+            width: 200%; /* 覆盖宽一点 */
+            height: 5px;
+            background: rgba(0, 255, 65, 0.8);
+            opacity: 0.5;
+            animation: scan 2s linear infinite;
+            pointer-events: none;
+            top: 10px; 
+            transform: translateX(-50%); /* 修正伪元素居中 */
+        }
+
+        .layer-1 {
+            border-left-width: 60px;
+            border-right-width: 60px;
+            border-bottom-width: 80px;
+            z-index: 3;
+            /* 边框发光 */
+            filter: drop-shadow(0 0 2px var(--neon-green));
+        }
+        .layer-2 {
+            border-left-width: 90px;
+            border-right-width: 90px;
+            border-bottom-width: 100px;
+            z-index: 2;
+        }
+        .layer-3 {
+            border-left-width: 120px;
+            border-right-width: 120px;
+            border-bottom-width: 120px;
+            z-index: 1;
+        }
+
+        .trunk {
+            width: 30px;
+            height: 40px;
+            background: #111;
+            border: 1px solid var(--neon-blue);
+            margin-top: 5px;
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* 装饰品：数据节点 */
+        .ornament {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #fff;
+            box-shadow: 0 0 8px #fff;
+            animation: blink-tech 0.5s infinite alternate;
+        }
+        .ornament.pink { background: var(--neon-pink); box-shadow: 0 0 8px var(--neon-pink); }
+        .ornament.blue { background: var(--neon-blue); box-shadow: 0 0 8px var(--neon-blue); }
+
+        /* --- 赛博数据方块 (礼物) --- */
+        .data-cube {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            border: 2px solid var(--neon-blue);
+            background: rgba(0, 243, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 10px var(--neon-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .data-cube::before {
+            content: '';
+            position: absolute;
+            top: 5px; left: 5px; right: 5px; bottom: 5px;
+            border: 1px dashed var(--neon-blue);
+        }
+
+        .data-cube:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-blue), 0 0 40px var(--neon-blue);
+            transform: translateY(-5px);
+        }
+
+        .data-cube.pink {
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+            background: rgba(255, 0, 255, 0.1);
+            box-shadow: 0 0 10px var(--neon-pink);
+        }
+        .data-cube.pink::before { border-color: var(--neon-pink); }
+        .data-cube.pink:hover {
+            background: var(--neon-pink);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-pink);
+        }
+
+        .data-cube.green {
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+            background: rgba(0, 255, 65, 0.1);
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+        .data-cube.green::before { border-color: var(--neon-green); }
+        .data-cube.green:hover {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-green);
+        }
+
+        /* --- Modal HUD --- */
+        .hud-modal {
+            background: rgba(10, 10, 10, 0.95);
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+            /* 切角效果 */
+            clip-path: polygon(
+                0 0, 
+                100% 0, 
+                100% calc(100% - 20px), 
+                calc(100% - 20px) 100%, 
+                0 100%
+            );
+        }
+        .hud-line {
+            height: 1px;
+            background: var(--neon-blue);
+            width: 100%;
+            margin: 10px 0;
+            position: relative;
+        }
+        .hud-line::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -2px;
+            width: 50px;
+            height: 4px;
+            background: var(--neon-blue);
+        }
+
+        /* 返回主页按钮样式 */
+        .home-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 50;
+            padding: 8px 16px;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            text-decoration: none;
+            font-family: 'Share Tech Mono', monospace;
+            background: rgba(5, 5, 5, 0.8);
+            clip-path: polygon(0 0, 100% 0, 100% 70%, 90% 100%, 0 100%); /* 科技感切角 */
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        .home-btn:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        /* 动画关键帧 */
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        @keyframes pulse-star {
+            0% { transform: scale(1); filter: drop-shadow(0 0 5px var(--neon-pink)); }
+            100% { transform: scale(1.1); filter: drop-shadow(0 0 15px var(--neon-pink)); }
+        }
+        @keyframes blink-tech {
+            0% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        @keyframes glitch-anim {
+            0% { clip: rect(12px, 9999px, 32px, 0); }
+            100% { clip: rect(65px, 9999px, 80px, 0); }
+        }
+        @keyframes glitch-anim2 {
+            0% { clip: rect(65px, 9999px, 80px, 0); }
+            100% { clip: rect(12px, 9999px, 32px, 0); }
+        }
+    </style>
+</head>
+<body class="selection:bg-green-500 selection:text-black">
+
+    <!-- Canvas 数字雨背景 -->
+    <canvas id="matrixCanvas" class="fixed top-0 left-0 w-full h-full pointer-events-none z-0 opacity-40"></canvas>
+
+    <!-- 返回主页按钮 -->
+    <a href="brainyxia.com" class="home-btn">
+        <span>&lt;</span> SYSTEM_HOME
+    </a>
+
+    <div class="relative w-full h-full flex flex-col items-center justify-center z-10 px-4">
+        
+        <!-- 科技感标题 -->
+        <header class="text-center mb-10 relative">
+            <h1 class="text-4xl md:text-6xl font-bold glitch-title tracking-widest text-white" data-text="CYBER_CHRISTMAS">
+                CYBER_CHRISTMAS
+            </h1>
+            <div class="flex justify-center gap-4 mt-2 text-xs md:text-sm text-cyan-400 font-mono opacity-80">
+                <span>SYS.STATUS: ONLINE</span>
+                <span>//</span>
+                <span>DATE: 2025.12.25</span>
+            </div>
+        </header>
+
+        <!-- 全息圣诞树 -->
+        <div class="tree-wrapper relative mb-8">
+            <div class="tree-container">
+                <div class="star"></div>
+                
+                <div class="layer layer-1">
+                    <div class="ornament pink" style="top: 40px; left: -10px;"></div>
+                    <div class="ornament" style="top: 50px; left: 10px;"></div>
+                </div>
+                
+                <div class="layer layer-2">
+                    <div class="ornament blue" style="top: 30px; left: 30px;"></div>
+                    <div class="ornament pink" style="top: 60px; left: -30px;"></div>
+                    <div class="ornament" style="top: 80px; left: 0px;"></div>
+                </div>
+                
+                <div class="layer layer-3">
+                    <div class="ornament" style="top: 40px; left: -50px;"></div>
+                    <div class="ornament blue" style="top: 70px; left: 40px;"></div>
+                    <div class="ornament pink" style="top: 90px; left: -20px;"></div>
+                    <div class="ornament" style="top: 100px; left: 20px;"></div>
+                </div>
+                
+                <div class="trunk"></div>
+            </div>
+            <!-- 地面光环 -->
+            <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-40 h-8 bg-green-500 blur-xl opacity-20 rounded-full"></div>
+        </div>
+
+        <!-- 数据方块 (礼物) -->
+        <div class="flex gap-8 mt-4 items-end justify-center">
+            <div class="data-cube" onclick="openDataPack(this, 'data')">
+                <span class="font-bold">01</span>
+            </div>
+            
+            <div class="data-cube pink" onclick="openDataPack(this, 'system')">
+                <span class="font-bold">02</span>
+            </div>
+
+            <div class="data-cube green" onclick="openDataPack(this, 'kernel')">
+                <span class="font-bold">03</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- HUD 弹窗 -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div id="modalCard" class="hud-modal w-full max-w-md p-6 transform scale-95 opacity-0 transition-all duration-200 text-left">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-xl font-bold text-cyan-400 font-mono" id="modalTitle">decrypting...</h2>
+                <div class="text-xs text-red-500 animate-pulse">● REC</div>
+            </div>
+            
+            <div class="hud-line"></div>
+            
+            <div class="font-mono text-green-400 my-4 leading-relaxed min-h-[6rem]" id="typewriterText">
+                <!-- 打字机文本将在这里生成 -->
+            </div>
+            
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeModal()" class="border border-cyan-400 text-cyan-400 px-6 py-2 hover:bg-cyan-400 hover:text-black transition-colors uppercase text-sm font-bold tracking-wider">
+                    [ Acknowledge ]
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Matrix Code Rain (Canvas) ---
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+
+        const katakana = '0123456789ABCDEF';
+        const characters = katakana.split('');
+        const fontSize = 16;
+        const columns = width / fontSize;
+        const drops = []; // 保存每列当前y坐标
+
+        for(let x = 0; x < columns; x++) {
+            drops[x] = 1;
+        }
+
+        function drawMatrix() {
+            // 半透明黑色背景，形成拖尾效果
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.05)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = '#0F0'; // 经典黑客绿
+            ctx.font = fontSize + 'px monospace';
+
+            for(let i = 0; i < drops.length; i++) {
+                const text = characters[Math.floor(Math.random() * characters.length)];
+                
+                // 偶尔改变颜色为白色或青色，增加闪烁感
+                if(Math.random() > 0.98) ctx.fillStyle = '#FFF';
+                else if(Math.random() > 0.95) ctx.fillStyle = '#00F3FF';
+                else ctx.fillStyle = '#00FF41';
+
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if(drops[i] * fontSize > height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        
+        let matrixInterval = setInterval(drawMatrix, 33);
+
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            // 重置列数
+            const newColumns = width / fontSize;
+            drops.length = 0;
+            for(let x = 0; x < newColumns; x++) drops[x] = 1;
+        });
+
+
+        // --- 2. 交互逻辑 (Typewriter Effect) ---
+        const messages = {
+            'data': {
+                title: "DATA_PACK // 01",
+                text: "正在解压节日协议...<br>加载成功。<br><br>愿你的系统运行流畅，无 Bug 侵扰。在这个周期里保持高电量状态！"
+            },
+            'system': {
+                title: "SYSTEM_MSG // 02",
+                text: "检测到【平安】信号增强...<br>防火墙已更新。<br><br>祝你在新的年度里连接稳定，核心温度正常，一切尽在掌控之中。"
+            },
+            'kernel': {
+                title: "KERNEL_PANIC // NO",
+                text: "覆盖指令：快乐优先。<br>注入好运算法...<br><br>这是一个超级管理员级别的祝福：愿你拥有无限的算力去实现所有梦想！"
+            }
+        };
+
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalCard = document.getElementById('modalCard');
+        const modalTitle = document.getElementById('modalTitle');
+        const typeContainer = document.getElementById('typewriterText');
+        let typeInterval;
+
+        function openDataPack(element, type) {
+            // 简单的视觉反馈
+            element.style.transform = "scale(0.9) rotate(5deg)";
+            setTimeout(() => {
+                element.style.transform = "scale(1) rotate(0deg)";
+                showHud(type);
+            }, 200);
+        }
+
+        function showHud(type) {
+            const data = messages[type];
+            modalTitle.innerText = data.title;
+            typeContainer.innerHTML = ""; // 清空
+            modalOverlay.classList.remove('hidden');
+            
+            // 动画
+            setTimeout(() => {
+                modalCard.classList.remove('scale-95', 'opacity-0');
+                modalCard.classList.add('scale-100', 'opacity-100');
+                startTypewriter(data.text);
+            }, 50);
+        }
+
+        function startTypewriter(htmlText) {
+            let i = 0;
+            // 简单的解析 HTML 标签的打字机有点复杂，这里简化：
+            // 直接一次性显示带光标闪烁，或者用简单的替换
+            // 为了效果，我们模拟逐字显示，但忽略 HTML 标签的延迟
+            typeContainer.innerHTML = '<span class="animate-pulse">_</span>';
+            
+            // 这里为了简单且支持 <br>，直接显示
+            // 实际项目中可以用更复杂的打字机库
+            typeContainer.innerHTML = htmlText + '<span class="inline-block w-2 h-4 bg-green-500 ml-1 animate-pulse align-middle"></span>';
+        }
+
+        function closeModal() {
+            modalCard.classList.remove('scale-100', 'opacity-100');
+            modalCard.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modalOverlay.classList.add('hidden');
+            }, 200);
+        }
+        
+        // Close on background click
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+
+    </script>
+</body>
+</html>

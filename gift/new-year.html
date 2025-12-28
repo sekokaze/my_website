@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON 2026 | 跨年倒计时</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts: Orbitron (科技感字体) -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    <!-- 引入 FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-yellow: #fcee0a;
+            --bg-dark: #050510;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            font-family: 'Orbitron', 'Noto Sans SC', sans-serif;
+            color: white;
+            overflow: hidden; /* 防止弹幕导致滚动条 */
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 背景网格动画 */
+        .cyber-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 200vw;
+            height: 200vh;
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+            animation: grid-move 20s linear infinite;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes grid-move {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(50px) translateZ(-200px); }
+        }
+
+        /* 霓虹文字特效 */
+        .neon-text-cyan {
+            text-shadow: 0 0 5px var(--neon-cyan), 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 5px var(--neon-pink), 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
+        }
+
+        /* 倒计时盒子样式 */
+        .timer-box {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+            backdrop-filter: blur(5px);
+            clip-path: polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%);
+            transition: transform 0.3s;
+        }
+        .timer-box:hover {
+            transform: scale(1.05);
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+        }
+
+        /* 弹幕样式 */
+        .danmaku-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 42vh; /* 调整高度：限制在屏幕上半部分，避免遮挡倒计时 */
+            pointer-events: none; /* 允许点击穿透 */
+            z-index: 50; /* 调整层级：提高层级，使其能遮挡住标题(z-20) */
+            overflow: hidden;
+            /* 增加底部渐变遮罩，让弹幕消失得更自然，不至于突然截断 */
+            mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+        }
+        .danmaku-item {
+            position: absolute;
+            white-space: nowrap;
+            font-size: 20px;
+            font-weight: bold;
+            /* 增强阴影，使弹幕在任何背景上都清晰 */
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.8);
+            opacity: 0.9;
+            will-change: transform;
+        }
+
+        /* 烟花 Canvas */
+        #fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* 赛博朋克输入框 */
+        .cyber-input {
+            background: transparent;
+            border: 2px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 5px var(--neon-cyan);
+        }
+        .cyber-input:focus {
+            outline: none;
+            box-shadow: 0 0 15px var(--neon-cyan);
+        }
+        .cyber-btn {
+            background: var(--neon-pink);
+            color: black;
+            border: none;
+            clip-path: polygon(10% 0, 100% 0, 100% 100%, 0% 100%);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.2s;
+        }
+        .cyber-btn:hover {
+            background: white;
+            box-shadow: 0 0 20px var(--neon-pink);
+        }
+        .cyber-btn:active {
+            transform: translateY(2px);
+        }
+
+        /* 故障效果动画 */
+        .glitch-wrapper {
+            position: relative;
+        }
+        .glitch-wrapper::before, .glitch-wrapper::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .glitch-wrapper::before {
+            left: 2px;
+            text-shadow: -1px 0 var(--neon-pink);
+            clip: rect(24px, 550px, 90px, 0);
+            /* 调整为60秒一次，极其偶尔的故障 */
+            animation: glitch-anim-2 60s infinite linear;
+        }
+        .glitch-wrapper::after {
+            left: -2px;
+            text-shadow: -1px 0 var(--neon-cyan);
+            clip: rect(85px, 550px, 140px, 0);
+            /* 调整为62秒一次，稍微错开 */
+            animation: glitch-anim 62s infinite linear;
+        }
+        @keyframes glitch-anim {
+            /* 0% 到 99% 都是静止的 */
+            0% { clip: rect(0,0,0,0); }
+            99% { clip: rect(0,0,0,0); }
+            /* 最后一瞬间轻微闪烁 */
+            99.1% { clip: rect(10px, 9999px, 30px, 0); }
+            99.3% { clip: rect(80px, 9999px, 100px, 0); }
+            99.5% { clip: rect(5px, 9999px, 60px, 0); }
+            99.7% { clip: rect(120px, 9999px, 140px, 0); }
+            99.9% { clip: rect(40px, 9999px, 70px, 0); }
+            100% { clip: rect(90px, 9999px, 110px, 0); }
+        }
+        @keyframes glitch-anim-2 {
+            /* 0% 到 99% 都是静止的 */
+            0% { clip: rect(0,0,0,0); }
+            99% { clip: rect(0,0,0,0); }
+            /* 最后一瞬间轻微闪烁 */
+            99.1% { clip: rect(120px, 9999px, 130px, 0); }
+            99.3% { clip: rect(10px, 9999px, 40px, 0); }
+            99.5% { clip: rect(80px, 9999px, 90px, 0); }
+            99.7% { clip: rect(20px, 9999px, 60px, 0); }
+            99.9% { clip: rect(100px, 9999px, 110px, 0); }
+            100% { clip: rect(50px, 9999px, 70px, 0); }
+        }
+
+        /* 在线人数标识 */
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid var(--neon-yellow);
+            color: var(--neon-yellow);
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            background: rgba(252, 238, 10, 0.1);
+        }
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--neon-yellow);
+            border-radius: 50%;
+            margin-right: 6px;
+            box-shadow: 0 0 8px var(--neon-yellow);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen relative">
+
+    <!-- 背景特效 -->
+    <div class="cyber-grid"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-0"></div>
+
+    <!-- 弹幕层 -->
+    <div id="danmaku-layer" class="danmaku-container"></div>
+    
+    <!-- 烟花层 -->
+    <canvas id="fireworks"></canvas>
+
+    <!-- 主内容区域 -->
+    <main class="relative z-20 text-center w-full max-w-4xl px-4 flex flex-col justify-center min-h-screen py-10">
+        
+        <!-- 头部信息 -->
+        <div class="flex justify-between items-center mb-12 w-full max-w-2xl mx-auto">
+            <div class="text-left">
+                <h2 class="text-xs md:text-sm text-gray-400 tracking-widest">TARGET YEAR</h2>
+                <div class="text-xl md:text-2xl text-[var(--neon-pink)] font-bold">2026.01.01</div>
+            </div>
+            
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                <span>ONLINE: <span id="online-count">8,402</span></span>
+            </div>
+        </div>
+
+        <!-- 标题移回此处，恢复原本的醒目样式 -->
+        <h1 class="text-5xl md:text-7xl mb-12 font-black tracking-tighter glitch-wrapper neon-text-cyan" data-text="SYSTEM_OVERRIDE">
+            NEON 2026
+        </h1>
+
+        <!-- 倒计时区域 -->
+        <div id="countdown-container" class="grid grid-cols-4 gap-2 md:gap-6 mb-16 transition-opacity duration-500">
+            <!-- 天 -->
+            <div class="timer-box p-4 flex flex-col items-center">
+                <span id="days" class="text-3xl md:text-6xl font-bold text-white mb-2">00</span>
+                <span class="text-[var(--neon-cyan)] text-xs md:text-sm">DAYS</span>
+            </div>
+            <!-- 时 -->
+            <div class="timer-box p-4 flex flex-col items-center">
+                <span id="hours" class="text-3xl md:text-6xl font-bold text-white mb-2">00</span>
+                <span class="text-[var(--neon-cyan)] text-xs md:text-sm">HOURS</span>
+            </div>
+            <!-- 分 -->
+            <div class="timer-box p-4 flex flex-col items-center">
+                <span id="minutes" class="text-3xl md:text-6xl font-bold text-white mb-2">00</span>
+                <span class="text-[var(--neon-cyan)] text-xs md:text-sm">MINUTES</span>
+            </div>
+            <!-- 秒 -->
+            <div class="timer-box p-4 flex flex-col items-center border-[var(--neon-pink)]" style="box-shadow: 0 0 15px rgba(255, 0, 255, 0.2);">
+                <span id="seconds" class="text-3xl md:text-6xl font-bold text-[var(--neon-pink)] mb-2">00</span>
+                <span class="text-[var(--neon-pink)] text-xs md:text-sm">SECONDS</span>
+            </div>
+        </div>
+
+        <!-- 庆祝文字 (默认隐藏) -->
+        <div id="celebration-text" class="hidden mb-10">
+            <h2 class="text-4xl md:text-6xl text-[var(--neon-yellow)] font-bold mb-4 neon-text-pink animate-bounce">
+                HAPPY NEW YEAR!
+            </h2>
+            <p class="text-xl text-white">欢迎来到 2026 赛博纪元</p>
+        </div>
+
+        <!-- 弹幕输入框 -->
+        <div class="w-full max-w-lg mx-auto mt-4 flex gap-2 z-30">
+            <div class="relative flex-grow">
+                <i class="fas fa-terminal absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--neon-cyan)]"></i>
+                <input type="text" id="danmaku-input" placeholder="输入新年祝福发送弹幕..." 
+                    class="cyber-input w-full py-3 pl-10 pr-4 rounded bg-opacity-20 bg-black text-white focus:bg-opacity-40 transition">
+            </div>
+            <button onclick="sendUserDanmaku()" class="cyber-btn px-6 py-3 rounded hover:scale-105 whitespace-nowrap">
+                发送 <i class="fas fa-paper-plane ml-1"></i>
+            </button>
+            <button onclick="window.location.href='/'" class="cyber-btn px-4 py-3 rounded hover:scale-105 whitespace-nowrap" style="background: var(--neon-cyan); color: black;">
+                主页 <i class="fas fa-home ml-1"></i>
+            </button>
+        </div>
+        
+        <div class="mt-8 text-xs text-gray-500 mb-4">
+            SYSTEM STATUS: <span class="text-green-400">ONLINE</span> | CONNECTION: <span class="text-green-400">SECURE</span>
+        </div>
+
+        <!-- 手动烟花按钮 -->
+        <div class="mb-12 relative z-30">
+            <button onclick="manualFireworks()" class="text-xs border border-red-500 text-red-500 px-4 py-2 rounded hover:bg-red-500 hover:text-black transition tracking-widest uppercase bg-black bg-opacity-50">
+                <i class="fas fa-radiation"></i> Manual Override: Launch Fireworks
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        /**
+         * 倒计时逻辑
+         */
+        const targetDate = new Date('January 1, 2026 00:00:00').getTime();
+        const daysEl = document.getElementById('days');
+        const hoursEl = document.getElementById('hours');
+        const minutesEl = document.getElementById('minutes');
+        const secondsEl = document.getElementById('seconds');
+        const countdownContainer = document.getElementById('countdown-container');
+        const celebrationText = document.getElementById('celebration-text');
+        
+        let hasEnded = false;
+
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = targetDate - now;
+
+            if (distance < 0) {
+                // 倒计时结束
+                if (!hasEnded) {
+                    hasEnded = true;
+                    endCountdown();
+                }
+                return;
+            }
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            daysEl.innerText = days < 10 ? '0' + days : days;
+            hoursEl.innerText = hours < 10 ? '0' + hours : hours;
+            minutesEl.innerText = minutes < 10 ? '0' + minutes : minutes;
+            secondsEl.innerText = seconds < 10 ? '0' + seconds : seconds;
+        }
+
+        function endCountdown() {
+            countdownContainer.classList.add('hidden');
+            celebrationText.classList.remove('hidden');
+            document.querySelector('.glitch-wrapper').setAttribute('data-text', '2026_LAUNCHED');
+            document.querySelector('h1').innerText = '2026 ARRIVED';
+            
+            startFireworks();
+            // 狂欢模式弹幕
+            setInterval(() => {
+                const wishes = ["新年快乐！", "2026冲冲冲！", "赛博元年快乐！", "Happy New Year!", "暴富！", "身体健康！"];
+                const randomWish = wishes[Math.floor(Math.random() * wishes.length)];
+                createDanmaku(randomWish, true);
+            }, 200);
+        }
+
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+
+        /**
+         * 模拟在线人数
+         */
+        const onlineCountEl = document.getElementById('online-count');
+        let currentOnline = 8402;
+        
+        setInterval(() => {
+            const change = Math.floor(Math.random() * 50) - 20; // 随机波动
+            currentOnline += change;
+            if(currentOnline < 1000) currentOnline = 1000;
+            onlineCountEl.innerText = currentOnline.toLocaleString();
+        }, 2000);
+
+        /**
+         * 弹幕系统
+         */
+        const danmakuLayer = document.getElementById('danmaku-layer');
+        const danmakuInput = document.getElementById('danmaku-input');
+        const defaultMessages = [
+            "期待2026！", "有人在吗？", "赛博朋克风格好酷", "坐等跨年", 
+            "祝大家新年快乐", "代码改变世界", "2025再见", "Hello World 2026",
+            "许愿明年发财", "脱单脱单！", "身体健康最重要"
+        ];
+        
+        // 修改颜色列表：移除了青色(#00f3ff)和青绿色(#00ff9d)，避免与标题同色
+        // 保留高对比度的颜色：粉色、黄色、白色、橙红色
+        const colors = ['#ff00ff', '#fcee0a', '#ffffff', '#ff3333', '#ff9900'];
+
+        function createDanmaku(text, isHighlight = false) {
+            const el = document.createElement('div');
+            el.innerText = text;
+            el.className = 'danmaku-item';
+            
+            // 随机样式
+            el.style.color = isHighlight ? '#fcee0a' : colors[Math.floor(Math.random() * colors.length)];
+            el.style.fontSize = (Math.random() * 10 + 16) + 'px'; // 16px - 26px
+            if (isHighlight) {
+                el.style.fontSize = '30px';
+                el.style.zIndex = 100;
+                el.style.border = '1px solid #fcee0a';
+                el.style.padding = '2px 10px';
+                el.style.backgroundColor = 'rgba(0,0,0,0.8)'; // 加深背景，更突出
+                el.style.boxShadow = '0 0 10px #fcee0a'; // 发光效果
+            }
+            
+            // 随机位置：限制在容器高度内 (0 - 38vh)，留一点底部缓冲
+            const topPos = Math.floor(Math.random() * 38); 
+            el.style.top = topPos + 'vh';
+            el.style.left = '100vw'; // 从右侧开始
+
+            danmakuLayer.appendChild(el);
+
+            // 动画
+            const speed = Math.random() * 5 + 5; // 5-10s
+            el.style.transition = `transform ${speed}s linear`;
+            
+            // 强制重绘以触发transition
+            el.offsetHeight; 
+            
+            el.style.transform = 'translateX(-120vw)'; // 移出屏幕左侧
+
+            // 清理DOM
+            setTimeout(() => {
+                el.remove();
+            }, speed * 1000);
+        }
+
+        // 自动生成弹幕
+        setInterval(() => {
+            if(!hasEnded) {
+                const msg = defaultMessages[Math.floor(Math.random() * defaultMessages.length)];
+                createDanmaku(msg);
+            }
+        }, 1500);
+
+        // 用户发送弹幕
+        function sendUserDanmaku() {
+            const text = danmakuInput.value.trim();
+            if (text) {
+                createDanmaku(text, true); // 高亮用户弹幕
+                danmakuInput.value = '';
+                
+                // 模拟回显反馈
+                const btn = document.querySelector('.cyber-btn');
+                const originText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> 已发送';
+                setTimeout(() => btn.innerHTML = originText, 1000);
+            }
+        }
+        
+        // 回车发送
+        danmakuInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendUserDanmaku();
+            }
+        });
+
+        /**
+         * Canvas 烟花特效
+         */
+        const canvas = document.getElementById('fireworks');
+        const ctx = canvas.getContext('2d');
+        let fireworks = [];
+        let particles = [];
+        let animationFrame;
+        let isFireworksRunning = false; // 新增状态标记
+
+        // 调整 Canvas 尺寸
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function random(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        class Firework {
+            constructor(tx, ty) {
+                this.x = canvas.width / 2;
+                this.y = canvas.height;
+                this.tx = tx;
+                this.ty = ty;
+                this.distanceToTarget = Math.sqrt(Math.pow(tx - this.x, 2) + Math.pow(ty - this.y, 2));
+                this.distanceTraveled = 0;
+                this.coordinates = [];
+                this.coordinateCount = 3;
+                while (this.coordinateCount--) {
+                    this.coordinates.push([this.x, this.y]);
+                }
+                this.angle = Math.atan2(ty - this.y, tx - this.x);
+                this.speed = 2;
+                this.acceleration = 1.05;
+                this.brightness = random(50, 70);
+                this.targetRadius = 1;
+            }
+
+            update(index) {
+                this.coordinates.pop();
+                this.coordinates.unshift([this.x, this.y]);
+
+                if (this.targetRadius < 8) {
+                    this.targetRadius += 0.3;
+                } else {
+                    this.targetRadius = 1;
+                }
+
+                this.speed *= this.acceleration;
+                const vx = Math.cos(this.angle) * this.speed;
+                const vy = Math.sin(this.angle) * this.speed;
+                this.distanceTraveled = Math.sqrt(Math.pow(this.distanceTraveled + vx, 2) + Math.pow(this.distanceTraveled + vy, 2));
+
+                if (this.distanceTraveled >= this.distanceToTarget) {
+                    createParticles(this.tx, this.ty);
+                    fireworks.splice(index, 1);
+                } else {
+                    this.x += vx;
+                    this.y += vy;
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.moveTo(this.coordinates[this.coordinates.length - 1][0], this.coordinates[this.coordinates.length - 1][1]);
+                ctx.lineTo(this.x, this.y);
+                ctx.strokeStyle = 'hsl(' + random(0, 360) + ', 100%, ' + this.brightness + '%)';
+                ctx.stroke();
+            }
+        }
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.coordinates = [];
+                this.coordinateCount = 5;
+                while (this.coordinateCount--) {
+                    this.coordinates.push([this.x, this.y]);
+                }
+                this.angle = random(0, Math.PI * 2);
+                this.speed = random(1, 10);
+                this.friction = 0.95;
+                this.gravity = 1;
+                this.hue = random(0, 360);
+                this.brightness = random(50, 80);
+                this.alpha = 1;
+                this.decay = random(0.015, 0.03);
+            }
+
+            update(index) {
+                this.coordinates.pop();
+                this.coordinates.unshift([this.x, this.y]);
+                this.speed *= this.friction;
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed + this.gravity;
+                this.alpha -= this.decay;
+
+                if (this.alpha <= this.decay) {
+                    particles.splice(index, 1);
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.moveTo(this.coordinates[this.coordinates.length - 1][0], this.coordinates[this.coordinates.length - 1][1]);
+                ctx.lineTo(this.x, this.y);
+                ctx.strokeStyle = 'hsla(' + this.hue + ', 100%, ' + this.brightness + '%, ' + this.alpha + ')';
+                ctx.stroke();
+            }
+        }
+
+        function createParticles(x, y) {
+            let particleCount = 30;
+            while (particleCount--) {
+                particles.push(new Particle(x, y));
+            }
+        }
+
+        function fireworkLoop() {
+            animationFrame = requestAnimationFrame(fireworkLoop);
+            // 拖尾效果
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'lighter';
+
+            let i = fireworks.length;
+            while (i--) {
+                fireworks[i].draw();
+                fireworks[i].update(i);
+            }
+
+            let j = particles.length;
+            while (j--) {
+                particles[j].draw();
+                particles[j].update(j);
+            }
+
+            if (random(0, 1) > 0.9) { // 随机发射概率
+                fireworks.push(new Firework(random(0, canvas.width), random(0, canvas.height / 2)));
+            }
+        }
+
+        function startFireworks() {
+             // 防止重复启动导致动画加速
+            if (isFireworksRunning) return;
+            isFireworksRunning = true;
+            fireworkLoop();
+        }
+
+        // 停止烟花
+        function stopFireworks() {
+            isFireworksRunning = false;
+            cancelAnimationFrame(animationFrame);
+            // 清空画布
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 清空粒子数组
+            fireworks = [];
+            particles = [];
+        }
+
+        // 手动触发/停止烟花 (开关逻辑)
+        function manualFireworks() {
+            const btn = event.currentTarget;
+            
+            if (isFireworksRunning) {
+                // 如果正在运行，则停止
+                stopFireworks();
+                
+                // 逻辑：如果时间还没到，停止烟花时应该把倒计时显示回来
+                if (!hasEnded) {
+                    countdownContainer.classList.remove('hidden');
+                }
+                
+                // 恢复按钮状态
+                btn.innerHTML = '<i class="fas fa-radiation"></i> Manual Override: Launch Fireworks';
+                btn.classList.remove('bg-red-500', 'text-black');
+                btn.classList.add('text-red-500');
+            } else {
+                // 如果未运行，则开始
+                startFireworks();
+                
+                // 逻辑：开始放烟花时，隐藏倒计时
+                countdownContainer.classList.add('hidden');
+                
+                // 切换为停止状态
+                btn.innerHTML = '<i class="fas fa-ban"></i> ABORT SEQUENCE (STOP)';
+                btn.classList.remove('text-red-500');
+                btn.classList.add('bg-red-500', 'text-black');
+            }
+        }
+    </script>
+</body>
+</html>

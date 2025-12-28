@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工具箱 - Brainyxia 智能科技工具平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-glow: #00f0ff;
+            --secondary-glow: #7000ff;
+            --bg-color: #0b0d17;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .font-tech {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transition: 0.5s;
+        }
+
+        .glass-card:hover::before {
+            left: 100%;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary-glow);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+
+        .neon-btn {
+            background: transparent;
+            border: 1px solid var(--primary-glow);
+            color: var(--primary-glow);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .neon-btn::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 100%;
+            background: var(--primary-glow);
+            z-index: -1;
+            transition: all 0.3s ease;
+        }
+
+        .neon-btn:hover {
+            color: #000;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .neon-btn:hover::after {
+            width: 100%;
+        }
+
+        .gradient-text {
+            background: linear-gradient(to right, #00f0ff, #7000ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0d17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-glow);
+        }
+
+        .category-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <canvas id="particle-canvas"></canvas>
+
+    <nav class="w-full py-6 px-8 flex justify-between items-center z-50 border-b border-white/10 bg-black/20 backdrop-blur-md sticky top-0">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-brain text-cyan-400 text-2xl animate-pulse"></i>
+            <span class="font-tech text-2xl font-bold tracking-wider text-white">Brainyxia</span>
+        </div>
+        <div class="hidden md:flex gap-8 text-sm text-gray-400 items-center">
+            <a href="index.html" class="hover:text-cyan-400 transition-colors">首页</a>
+            <a href="tools.html" class="text-cyan-400 font-semibold">工具箱</a>
+            <a href="#" class="hover:text-cyan-400 transition-colors">API文档</a>
+            <a href="#" class="hover:text-cyan-400 transition-colors">登录</a>
+            <div class="relative group">
+                <button class="flex items-center gap-2 text-pink-400 hover:text-pink-300 transition-colors">
+                    <i class="fa-solid fa-gift"></i>
+                    <span>节日特辑</span>
+                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                </button>
+                <div class="absolute right-0 top-full mt-2 w-48 bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                    <a href="gift.html" class="block px-4 py-3 text-sm text-gray-300 hover:text-pink-400 hover:bg-white/5 transition-colors">
+                        <i class="fa-solid fa-gift mr-2"></i>节日礼物
+                    </a>
+                    <a href="new-year-2026.html" class="block px-4 py-3 text-sm text-gray-300 hover:text-pink-400 hover:bg-white/5 transition-colors">
+                        <i class="fa-solid fa-calendar-days mr-2"></i>2026新年
+                    </a>
+                </div>
+            </div>
+        </div>
+        <button class="md:hidden text-white text-2xl" onclick="alert('移动端菜单展开')">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </nav>
+
+    <header class="relative pt-20 pb-16 px-6 text-center z-10 max-w-7xl mx-auto">
+        <div class="inline-block px-4 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-xs mb-6 tracking-widest uppercase font-semibold">
+            All Tools
+        </div>
+        <h1 class="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+            完整 <span class="gradient-text font-tech">工具箱</span>
+        </h1>
+        <p class="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+            探索我们所有的智能工具，按类别快速找到您需要的解决方案。
+        </p>
+    </header>
+
+    <section class="flex-grow px-6 pb-24 z-10 max-w-7xl mx-auto w-full">
+        
+        <div class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
+                <h2 class="text-2xl font-bold font-tech">AI 创作类</h2>
+                <span class="category-badge bg-purple-500/10 border border-purple-500/30 text-purple-400">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    2 个工具
+                </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <i class="fa-solid fa-video text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3 group-hover:text-cyan-400 transition-colors">AI 图片视频创作</h3>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
+                        利用生成式 AI 技术，输入脚本或产品描述，一键生成高质量营销短视频。
+                    </p>
+                    <ul class="text-xs text-gray-500 mb-8 space-y-2">
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 智能图片生成</li>
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 智能视频生成</li>
+                    </ul>
+                    <button onclick="navigateTo('ai-video')" class="neon-btn py-3 w-full rounded font-bold text-sm">
+                        立即制作 <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+
+                <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <svg class="w-8 h-8 text-white fill-current" viewBox="0 0 512 512">
+                            <path d="M428.3 391.6c-7.2-5.7-16-8.3-24.8-7-78.2 11.2-151.7-14.5-202.4-64.8-51.5-51-69.8-124.5-57.5-204.9 1.2-8.1-1.3-16.4-7-22.9-5.7-6.6-14.4-10.1-23.1-9.4-46.7 4.1-82.9 44.8-79.8 91.9 3.7 57.1 27.2 109.2 65.7 149.3 41.2 42.9 96.5 71.7 154.5 81.6 47.5 8.1 91.8-9.1 127.4-37.9 7.2-5.8 10-15.6 6.2-24.3-3.7-8.8-12.4-14.1-21.6-12.5-54.8 9.3-102.4-5-137.3-33.5-32.9-26.9-53.1-67.8-56.4-112.7-.5-7 5.2-12.8 12.2-12.8 6.4 0 11.9 4.8 12.7 11.2 2.8 38 19.8 72.8 47.7 95.5 29.4 24.1 69.6 36.3 115.8 28.4 9-1.6 18.1 1.1 24.8 7.2 6.7 6.2 9.9 15.5 8.3 24.6z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3 group-hover:text-yellow-400 transition-colors">Nano Banana Pro</h3>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
+                        下一代商业视觉生成助手。无需摄影棚，通过AI精准控制光影与材质，低成本批量产出电商级产品图与营销海报。
+                    </p>
+                    <ul class="text-xs text-gray-500 mb-8 space-y-2">
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 商业级视觉直出</li>
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 场景化营销生成</li>
+                    </ul>
+                    <button onclick="navigateTo('banana-ai')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #fbbf24;">
+                        立即体验 <i class="fa-solid fa-bolt ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-1 h-8 bg-gradient-to-b from-emerald-500 to-teal-500 rounded-full"></div>
+                <h2 class="text-2xl font-bold font-tech">数据处理类</h2>
+                <span class="category-badge bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                    <i class="fa-solid fa-database"></i>
+                    1 个工具
+                </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <i class="fa-solid fa-file-excel text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3 group-hover:text-emerald-400 transition-colors">Markdown 转 Excel</h3>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
+                        将 Markdown 表格快速转换为 Excel 格式，支持批量处理与自定义样式导出。
+                    </p>
+                    <ul class="text-xs text-gray-500 mb-8 space-y-2">
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 表格格式转换</li>
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 批量文件处理</li>
+                    </ul>
+                    <button onclick="navigateTo('md-to-excel')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #10b981;">
+                        开始转换 <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full"></div>
+                <h2 class="text-2xl font-bold font-tech">图片处理类</h2>
+                <span class="category-badge bg-blue-500/10 border border-blue-500/30 text-blue-400">
+                    <i class="fa-solid fa-image"></i>
+                    1 个工具
+                </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <i class="fa-solid fa-compress text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3 group-hover:text-blue-400 transition-colors">图片压缩器</h3>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
+                        智能压缩图片文件大小，保持高质量的同时大幅减少存储空间与加载时间。
+                    </p>
+                    <ul class="text-xs text-gray-500 mb-8 space-y-2">
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 智能压缩算法</li>
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 多格式支持</li>
+                    </ul>
+                    <button onclick="navigateTo('picture-compressor')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #3b82f6;">
+                        开始压缩 <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-1 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
+                <h2 class="text-2xl font-bold font-tech">电商工具类</h2>
+                <span class="category-badge bg-orange-500/10 border border-orange-500/30 text-orange-400">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    1 个工具
+                </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <i class="fa-solid fa-box-open text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3 group-hover:text-orange-400 transition-colors">FBA 费用计算器</h3>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
+                        实时同步亚马逊最新物流费率表。精准计算 FBA 派送成本与预估利润率。
+                    </p>
+                    <ul class="text-xs text-gray-500 mb-8 space-y-2">
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i>旺季派送费计算</li>
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 尺寸分段建议</li>
+                    </ul>
+                    <button onclick="navigateTo('fba-calc')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #f97316;">
+                        开始计算 <i class="fa-solid fa-calculator ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-16">
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-1 h-8 bg-gradient-to-b from-gray-600 to-gray-500 rounded-full"></div>
+                <h2 class="text-2xl font-bold font-tech">广告管理类</h2>
+                <span class="category-badge bg-gray-500/10 border border-gray-500/30 text-gray-400">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    1 个工具
+                </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="glass-card rounded-xl p-8 flex flex-col h-full group relative border-gray-700 border-dashed">
+                    <div class="absolute top-4 right-4 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-[10px] px-2 py-1 rounded font-tech tracking-wider animate-pulse">
+                        DEV MODE
+                    </div>
+                    <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center mb-6 shadow-lg grayscale group-hover:grayscale-0 transition-all duration-500">
+                        <i class="fa-solid fa-bullhorn text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3 text-gray-400 group-hover:text-emerald-400 transition-colors">广告批量管理</h3>
+                    <p class="text-gray-500 text-sm mb-6 flex-grow leading-relaxed">
+                        通过规则引擎批量创建数千个广告活动，自动拓词与竞价。
+                    </p>
+                    <ul class="text-xs text-gray-600 mb-8 space-y-2">
+                        <li class="flex items-center"><i class="fa-solid fa-lock text-gray-600 mr-2"></i> 批量导入</li>
+                        <li class="flex items-center"><i class="fa-solid fa-lock text-gray-600 mr-2"></i> 智能分组</li>
+                    </ul>
+                    <button class="py-3 w-full rounded font-bold text-sm border border-gray-700 text-gray-500 cursor-not-allowed bg-white/5 backdrop-blur-sm" disabled>
+                        仍在开发 <i class="fa-solid fa-screwdriver-wrench ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    <footer class="border-t border-white/10 bg-black/40 py-8 px-6 mt-auto z-10">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-gray-500 text-sm">
+                &copy; 2025 Brainyxia Tech. All rights reserved.
+            </div>
+            <div class="flex gap-6">
+                <a href="#" class="text-gray-500 hover:text-white transition-colors"><i class="fa-brands fa-github"></i></a>
+                <a href="#" class="text-gray-500 hover:text-white transition-colors"><i class="fa-brands fa-twitter"></i></a>
+                <a href="#" class="text-gray-500 hover:text-white transition-colors"><i class="fa-brands fa-discord"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <div id="toast" class="fixed bottom-10 right-10 transform translate-y-20 opacity-0 transition-all duration-300 z-50 bg-slate-800 border border-cyan-500/50 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3">
+        <div class="animate-spin h-5 w-5 border-2 border-cyan-500 border-t-transparent rounded-full"></div>
+        <div>
+            <h4 class="font-bold text-sm text-cyan-400">System Redirect</h4>
+            <p class="text-xs text-gray-300" id="toast-message">Loading module...</p>
+        </div>
+    </div>
+
+    <script>
+        function navigateTo(toolId) {
+            const toast = document.getElementById('toast');
+            const msg = document.getElementById('toast-message');
+            let url = '';
+            let toolName = '';
+
+            switch(toolId) {
+                case 'ai-video':
+                    toolName = "AI 视频制作工具";
+                    url = 'http://sora2v.brainstrom.top/?code=PW4SVCTF'; 
+                    break;
+                case 'fba-calc':
+                    toolName = "FBA 运费计算器";
+                    url = '/tools/fba-calculator';
+                    break;
+                case 'banana-ai':
+                    toolName = "Banana AI";
+                    url = 'tools/banana-ai.html';
+                    break;
+                case 'ads-manager':
+                    toolName = "广告批量创建系统";
+                    url = '/tools/ads-manager';
+                    break;
+                case 'md-to-excel':
+                    toolName = "Markdown 转 Excel";
+                    url = 'tools/md-to-excel.html';
+                    break;
+                case 'picture-compressor':
+                    toolName = "图片压缩器";
+                    url = 'tools/picture-compressor.html';
+                    break;
+            }
+
+            msg.innerText = `正在启动: ${toolName}...`;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                 window.open(url, '_blank');
+            }, 800);
+        }
+
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let particles = [];
+        
+        const particleCount = 60; 
+        const connectionDistance = 150; 
+        const mouseDistance = 200; 
+
+        let mouse = { x: null, y: null };
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+
+        window.addEventListener('resize', resize);
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2 + 1;
+                this.color = Math.random() > 0.5 ? '#00f0ff' : '#7000ff'; 
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+
+                if (mouse.x != null) {
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < mouseDistance) {
+                        const forceDirectionX = dx / distance;
+                        const forceDirectionY = dy / distance;
+                        const force = (mouseDistance - distance) / mouseDistance;
+                        const directionX = forceDirectionX * force * 0.6;
+                        const directionY = forceDirectionY * force * 0.6;
+                        this.vx += directionX; 
+                        this.vy += directionY;
+                    }
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        function init() {
+            particles = [];
+            resize();
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+
+                for (let j = i; j < particles.length; j++) {
+                    let dx = particles[i].x - particles[j].x;
+                    let dy = particles[i].y - particles[j].y;
+                    let distance = Math.sqrt(dx*dx + dy*dy);
+
+                    if (distance < connectionDistance) {
+                        ctx.beginPath();
+                        let opacity = 1 - (distance / connectionDistance);
+                        ctx.strokeStyle = `rgba(100, 116, 139, ${opacity * 0.2})`; 
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>

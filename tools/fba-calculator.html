@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亚马逊美国站 FBA 配送费计算器 (2025-2026修正版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        .input-group-label { font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.25rem; display: block; }
+        .result-card { transition: all 0.3s ease; }
+        .result-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .tab-active { border-bottom: 2px solid #2563EB; color: #2563EB; font-weight: bold; }
+        .tab-inactive { color: #6B7280; cursor: pointer; }
+        .step-item { position: relative; padding-left: 24px; margin-bottom: 12px; border-left: 2px solid #e5e7eb; padding-bottom: 8px; }
+        .step-item::before { content: ''; position: absolute; left: -5px; top: 6px; width: 8px; height: 8px; border-radius: 50%; background-color: #3b82f6; }
+        .step-item:last-child { border-left: none; }
+        .step-highlight { color: #2563eb; font-weight: 600; }
+        .step-sub { font-size: 0.85em; color: #6b7280; margin-top: 2px; display: block; }
+        .badge-compare { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 5px; }
+        .badge-prev { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .badge-next { background-color: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-slate-900 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fa-brands fa-amazon text-3xl text-yellow-500"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide leading-tight">FBA 配送费计算器</h1>
+                    <span class="text-xs font-normal text-gray-400">含 2025旺季(修正低价) & 2026新政</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4 md:p-8 flex-grow">
+        
+        <!-- Tab Navigation -->
+        <div class="flex gap-6 border-b border-gray-200 mb-6">
+            <div id="tab-single" onclick="switchTab('single')" class="pb-3 px-2 tab-active flex items-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-calculator"></i> 单品计算
+            </div>
+            <div id="tab-bulk" onclick="switchTab('bulk')" class="pb-3 px-2 tab-inactive flex items-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-file-excel"></i> 批量上传计算
+            </div>
+        </div>
+
+        <!-- SECTION: Single Calculator -->
+        <div id="section-single" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Input Section -->
+            <div class="lg:col-span-1 bg-white rounded-xl shadow-md p-6 h-fit">
+                <h2 class="text-lg font-bold text-gray-800 mb-5 border-b pb-2"><i class="fa-solid fa-sliders mr-2 text-blue-600"></i>计算参数</h2>
+                
+                <div class="mb-5">
+                    <label class="input-group-label text-blue-800">费率版本 / 时间段</label>
+                    <select id="ratePeriod" class="w-full border-2 border-blue-100 bg-blue-50 rounded-lg p-2.5 text-sm font-semibold text-gray-700 focus:border-blue-500 outline-none transition" onchange="calculateUI()">
+                        <option value="2025_std">2025 标准费率 (非旺季)</option>
+                        <option value="2025_peak" selected>2025 旺季 (10/15 - 1/14)</option>
+                        <option value="2026_new">2026 新费率 (1/15/2026 起)</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1" id="periodHint">当前应用：2025年假日旺季配送费</p>
+                </div>
+
+                <div class="mb-5">
+                    <label class="input-group-label">商品类目</label>
+                    <div class="flex bg-gray-100 p-1 rounded-lg">
+                        <button onclick="setCategoryUI('standard')" id="btn-std" class="flex-1 py-2 px-2 rounded-md text-xs font-medium bg-white text-blue-600 shadow-sm transition-all">非服装类</button>
+                        <button onclick="setCategoryUI('apparel')" id="btn-app" class="flex-1 py-2 px-2 rounded-md text-xs font-medium text-gray-500 transition-all">服装类</button>
+                        <button onclick="setCategoryUI('dangerous')" id="btn-dg" class="flex-1 py-2 px-2 rounded-md text-xs font-medium text-gray-500 transition-all">危险品</button>
+                    </div>
+                    <input type="hidden" id="categoryInput" value="standard">
+                </div>
+
+                <div class="mb-5">
+                    <label class="input-group-label">商品售价 (USD)</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2 text-gray-500">$</span>
+                        <input type="number" id="price" placeholder="0.00" class="w-full border border-gray-300 rounded-lg p-2 pl-7 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" oninput="calculateUI()">
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">影响2026年涨幅及低价费率判定</p>
+                </div>
+
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="input-group-label">包装尺寸 (长 x 宽 x 高)</label>
+                        <select id="dimUnit" class="text-xs border border-gray-300 rounded px-2 py-1 bg-gray-50 focus:outline-none focus:border-blue-500" onchange="calculateUI()">
+                            <option value="cm">厘米 (cm)</option>
+                            <option value="in">英寸 (in)</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" id="length" placeholder="长" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" oninput="calculateUI()">
+                        <input type="number" id="width" placeholder="宽" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" oninput="calculateUI()">
+                        <input type="number" id="height" placeholder="高" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" oninput="calculateUI()">
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="input-group-label">实重</label>
+                        <select id="weightUnit" class="text-xs border border-gray-300 rounded px-2 py-1 bg-gray-50 focus:outline-none focus:border-blue-500" onchange="calculateUI()">
+                            <option value="kg">千克 (kg)</option>
+                            <option value="lb">磅 (lb)</option>
+                            <option value="oz">盎司 (oz)</option>
+                        </select>
+                    </div>
+                    <input type="number" id="weight" placeholder="输入重量" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" oninput="calculateUI()">
+                </div>
+
+                <button onclick="calculateUI()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow transition duration-200 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> 重新计算
+                </button>
+            </div>
+
+            <!-- Results Section -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500 result-card relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-bl-lg" id="seasonBadge">
+                        旺季费率生效中
+                    </div>
+                    <h3 class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">预估 FBA 配送费</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-5xl font-bold text-gray-900" id="feeDisplay">$0.00</span>
+                        <span class="text-gray-500 text-lg">/件</span>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-2" id="feeBadges"></div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                    <h4 class="text-sm font-bold text-gray-800 mb-3 border-b pb-2">
+                        <i class="fa-solid fa-list-ol text-blue-500 mr-2"></i> 详细计算过程 (区间分析)
+                    </h4>
+                    <div id="calculationBreakdown" class="text-sm text-gray-600 space-y-2">
+                        <p class="text-gray-400 italic">等待输入数据...</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="p-2 bg-blue-50 rounded-lg text-blue-600">
+                                <i class="fa-solid fa-ruler-combined"></i>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-600">尺寸分段 (Size Tier)</span>
+                        </div>
+                        <p class="text-lg font-bold text-gray-800 pl-1" id="tierDisplay">-</p>
+                        <div class="text-xs text-gray-400 mt-1 pl-1 flex flex-col gap-1">
+                            <span id="dimDisplay">L: - | W: - | H: - (in)</span>
+                            <span id="girthDisplay" class="text-gray-300">围长+长: -</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="p-2 bg-green-50 rounded-lg text-green-600">
+                                <i class="fa-solid fa-weight-hanging"></i>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-600">计费重量 (Billable Weight)</span>
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <p class="text-lg font-bold text-gray-800 pl-1" id="billableWeightDisplay">- lb</p>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-500 space-y-1 pl-1 border-t pt-2">
+                            <div class="flex justify-between">
+                                <span>实际重量:</span>
+                                <span id="actualWeightDisplay">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>体积重量 (Dim / 139):</span>
+                                <span id="dimWeightDisplay">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: Bulk Calculator -->
+        <div id="section-bulk" class="hidden bg-white rounded-xl shadow-lg p-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800 mb-4"><i class="fa-solid fa-file-import mr-2 text-green-600"></i>批量上传</h2>
+                    <p class="text-gray-600 mb-6 text-sm">请上传 Excel (.xlsx) 文件。系统将自动计算并生成包含结果的新表格。</p>
+                    <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <button onclick="downloadTemplate()" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded inline-flex items-center transition">
+                            <i class="fa-solid fa-download mr-2"></i> 下载 Excel 模板
+                        </button>
+                    </div>
+                    <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <input type="file" id="uploadFile" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4"/>
+                        <div class="mb-4">
+                             <label class="input-group-label text-blue-800 mb-1">选择应用的费率版本</label>
+                             <select id="bulkRatePeriod" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                                <option value="2025_std">2025 标准费率 (非旺季)</option>
+                                <option value="2025_peak" selected>2025 旺季 (10/15 - 1/14)</option>
+                                <option value="2026_new">2026 新费率 (1/15/2026 起)</option>
+                            </select>
+                        </div>
+                        <button onclick="processBulkUpload()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow transition duration-200">
+                            <i class="fa-solid fa-gears mr-2"></i> 开始计算并导出
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-blue-50 p-6 rounded-lg border border-blue-100 h-fit">
+                    <h3 class="font-bold text-blue-800 mb-3">列名说明 (Excel)</h3>
+                    <ul class="text-sm text-blue-800 space-y-2">
+                        <li><span class="font-bold bg-white px-1 rounded">商品名称</span>, <span class="font-bold bg-white px-1 rounded">长</span>, <span class="font-bold bg-white px-1 rounded">宽</span>, <span class="font-bold bg-white px-1 rounded">高</span>, <span class="font-bold bg-white px-1 rounded">重量</span>, <span class="font-bold bg-white px-1 rounded">商品售价</span></li>
+                    </ul>
+                    <div id="bulkStatus" class="mt-6 text-sm font-mono text-gray-600 whitespace-pre-line"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // =================== DATA TABLES ===================
+
+        // --- 2025 RATE TABLES (STANDARD FBA >= $10) ---
+        const RATE_CARD_2025_STD = {
+            'Small Standard': [{ maxOz: 2, fee: 3.06 }, { maxOz: 4, fee: 3.15 }, { maxOz: 6, fee: 3.24 }, { maxOz: 8, fee: 3.33 }, { maxOz: 10, fee: 3.43 }, { maxOz: 12, fee: 3.53 }, { maxOz: 14, fee: 3.60 }, { maxOz: 16, fee: 3.65 }],
+            'Large Standard': [{ maxOz: 4, fee: 3.68 }, { maxOz: 8, fee: 3.90 }, { maxOz: 12, fee: 4.15 }, { maxOz: 16, fee: 4.55 }, { maxLb: 1.25, fee: 4.99 }, { maxLb: 1.5, fee: 5.37 }, { maxLb: 1.75, fee: 5.52 }, { maxLb: 2.0, fee: 5.77 }, { maxLb: 2.25, fee: 5.87 }, { maxLb: 2.5, fee: 6.05 }, { maxLb: 2.75, fee: 6.21 }, { maxLb: 3.0, fee: 6.62 }, { maxLb: 20, base: 6.92, interval: 0.25, stepPrice: 0.08 }]
+        };
+        const RATE_CARD_2025_APP = {
+            'Small Standard': [{ maxOz: 4, fee: 3.27 }, { maxOz: 8, fee: 3.42 }, { maxOz: 12, fee: 3.72 }, { maxOz: 16, fee: 3.98 }],
+            'Large Standard': [{ maxOz: 4, fee: 4.25 }, { maxOz: 8, fee: 4.45 }, { maxOz: 12, fee: 4.67 }, { maxOz: 16, fee: 5.12 }, { maxLb: 1.5, fee: 5.90 }, { maxLb: 2.0, fee: 6.14 }, { maxLb: 2.5, fee: 6.60 }, { maxLb: 3.0, fee: 6.81 }, { maxLb: 20, base: 6.92, interval: 0.5, stepPrice: 0.16 }]
+        };
+
+        // --- 2025 LOW PRICE RATE TABLES (< $10) - NON-PEAK ---
+        const RATE_CARD_2025_LOW_STD = {
+            'Small Standard': [{ maxOz: 2, fee: 2.29 }, { maxOz: 4, fee: 2.38 }, { maxOz: 6, fee: 2.47 }, { maxOz: 8, fee: 2.56 }, { maxOz: 10, fee: 2.66 }, { maxOz: 12, fee: 2.76 }, { maxOz: 14, fee: 2.83 }, { maxOz: 16, fee: 2.88 }],
+            'Large Standard': [{ maxOz: 4, fee: 2.91 }, { maxOz: 8, fee: 3.13 }, { maxOz: 12, fee: 3.38 }, { maxOz: 16, fee: 3.78 }, { maxLb: 1.25, fee: 4.22 }, { maxLb: 1.5, fee: 4.60 }, { maxLb: 1.75, fee: 4.75 }, { maxLb: 2.0, fee: 5.00 }, { maxLb: 2.25, fee: 5.10 }, { maxLb: 2.5, fee: 5.28 }, { maxLb: 2.75, fee: 5.44 }, { maxLb: 3.0, fee: 5.85 }, { maxLb: 20, base: 6.15, interval: 0.25, stepPrice: 0.08 }]
+        };
+        const RATE_CARD_2025_LOW_APP = RATE_CARD_2025_LOW_STD; 
+
+        // --- 2025 PEAK TABLES (STANDARD FBA >= $10) ---
+        const RATE_CARD_PEAK_STD = {
+            'Small Standard': [{ maxOz: 2, fee: 3.25 }, { maxOz: 4, fee: 3.34 }, { maxOz: 6, fee: 3.44 }, { maxOz: 8, fee: 3.53 }, { maxOz: 10, fee: 3.64 }, { maxOz: 12, fee: 3.74 }, { maxOz: 14, fee: 3.82 }, { maxOz: 16, fee: 3.87 }],
+            'Large Standard': [{ maxOz: 4, fee: 3.92 }, { maxOz: 8, fee: 4.16 }, { maxOz: 12, fee: 4.43 }, { maxOz: 16, fee: 4.84 }, { maxLb: 1.25, fee: 5.29 }, { maxLb: 1.5, fee: 5.68 }, { maxLb: 1.75, fee: 5.84 }, { maxLb: 2.0, fee: 6.10 }, { maxLb: 2.25, fee: 6.24 }, { maxLb: 2.5, fee: 6.44 }, { maxLb: 2.75, fee: 6.61 }, { maxLb: 3.0, fee: 7.03 }, { maxLb: 20, base: 7.46, interval: 0.25, stepPrice: 0.08 }]
+        };
+        const RATE_CARD_PEAK_APP = {
+            'Small Standard': [{ maxOz: 4, fee: 3.48 }, { maxOz: 8, fee: 3.63 }, { maxOz: 12, fee: 3.94 }, { maxOz: 16, fee: 4.22 }],
+            'Large Standard': [{ maxOz: 4, fee: 4.51 }, { maxOz: 8, fee: 4.73 }, { maxOz: 12, fee: 4.96 }, { maxOz: 16, fee: 5.43 }, { maxLb: 1.5, fee: 6.26 }, { maxLb: 2.0, fee: 6.51 }, { maxLb: 2.5, fee: 6.99 }, { maxLb: 3.0, fee: 7.21 }, { maxLb: 20, base: 7.46, interval: 0.5, stepPrice: 0.16 }]
+        };
+
+        // --- 2025 PEAK TABLES (LOW PRICE FBA < $10) ---
+        const RATE_CARD_PEAK_LOW_STD = {
+            'Small Standard': [{ maxOz: 2, fee: 2.48 }, { maxOz: 4, fee: 2.57 }, { maxOz: 6, fee: 2.67 }, { maxOz: 8, fee: 2.76 }, { maxOz: 10, fee: 2.87 }, { maxOz: 12, fee: 2.97 }, { maxOz: 14, fee: 3.05 }, { maxOz: 16, fee: 3.10 }],
+            'Large Standard': [{ maxOz: 4, fee: 3.15 }, { maxOz: 8, fee: 3.39 }, { maxOz: 12, fee: 3.66 }, { maxOz: 16, fee: 4.07 }, { maxLb: 1.25, fee: 4.52 }, { maxLb: 1.5, fee: 4.91 }, { maxLb: 1.75, fee: 5.07 }, { maxLb: 2.0, fee: 5.33 }, { maxLb: 2.25, fee: 5.47 }, { maxLb: 2.5, fee: 5.67 }, { maxLb: 2.75, fee: 5.84 }, { maxLb: 3.0, fee: 6.26 }, { maxLb: 20, base: 6.69, interval: 0.25, stepPrice: 0.08 }]
+        };
+        const RATE_CARD_PEAK_LOW_APP = {
+            'Small Standard': [{ maxOz: 4, fee: 2.73 }, { maxOz: 8, fee: 2.73 }, { maxOz: 12, fee: 2.90 }, { maxOz: 16, fee: 2.90 }],
+            'Large Standard': RATE_CARD_PEAK_LOW_STD['Large Standard']
+        };
+
+        // --- 2026 RATE TABLES (STANDARD FBA >= $10) ---
+        const RATE_CARD_2026_STD = {
+            'Small Standard': [{ maxOz: 2, fee: 3.18 }, { maxOz: 4, fee: 3.27 }, { maxOz: 6, fee: 3.36 }, { maxOz: 8, fee: 3.45 }, { maxOz: 10, fee: 3.56 }, { maxOz: 12, fee: 3.66 }, { maxOz: 14, fee: 3.73 }, { maxOz: 16, fee: 3.79 }],
+            'Large Standard': RATE_CARD_2025_STD['Large Standard'] // 2026 uses 2025 rates for Large Standard
+        };
+        const RATE_CARD_2026_APP = {
+            'Small Standard': [{ maxOz: 4, fee: 3.39 }, { maxOz: 8, fee: 3.55 }, { maxOz: 12, fee: 3.86 }, { maxOz: 16, fee: 4.13 }],
+            'Large Standard': RATE_CARD_2025_APP['Large Standard']
+        };
+
+        // --- 2026 RATE TABLES (LOW PRICE FBA < $10) ---
+        const RATE_CARD_2026_LOW_STD = {
+            'Small Standard': [{ maxOz: 2, fee: 2.43 }, { maxOz: 4, fee: 2.49 }, { maxOz: 6, fee: 2.56 }, { maxOz: 8, fee: 2.66 }, { maxOz: 10, fee: 2.77 }, { maxOz: 12, fee: 2.82 }, { maxOz: 14, fee: 2.92 }, { maxOz: 16, fee: 2.95 }],
+            'Large Standard': [{ maxOz: 4, fee: 2.91 }, { maxOz: 8, fee: 3.13 }, { maxOz: 12, fee: 3.38 }, { maxOz: 16, fee: 3.78 }, { maxLb: 1.25, fee: 4.22 }, { maxLb: 1.5, fee: 4.60 }, { maxLb: 1.75, fee: 4.75 }, { maxLb: 2.0, fee: 5.00 }, { maxLb: 2.25, fee: 5.10 }, { maxLb: 2.5, fee: 5.28 }, { maxLb: 2.75, fee: 5.44 }, { maxLb: 3.0, fee: 5.85 }, { maxLb: 20, base: 6.15, interval: 0.25, stepPrice: 0.08 }]
+        };
+
+        const DG_ADDER = { 'Small Standard': 0.97, 'Large Standard': 1.06, 'Large Bulky': 0.72, 'Extra Large': 17.00 };
+
+        // --- LOGIC ---
+
+        function calculateFBA(params) {
+            let logs = [];
+            let dims = [params.l, params.w, params.h];
+            if (params.dimUnit === 'cm') dims = dims.map(d => d / 2.54);
+            dims.sort((a, b) => b - a);
+            let [finalL, finalW, finalH] = dims;
+            
+            let finalWeightLb = params.weight;
+            if (params.weightUnit === 'kg') finalWeightLb = params.weight * 2.20462;
+            else if (params.weightUnit === 'oz') finalWeightLb = params.weight / 16;
+
+            let tierInfo = determineTier(finalL, finalW, finalH, finalWeightLb, params.period === '2026_new');
+            let tier = tierInfo.tier;
+            logs.push(`尺寸判定: <span class="step-highlight">${tier}</span>`);
+
+            let dimWeight = (finalL * finalW * finalH) / 139;
+            let billableWeight = (tier === 'Small Standard') ? finalWeightLb : Math.max(finalWeightLb, dimWeight);
+            logs.push(`计费重量: ${billableWeight.toFixed(2)} lb`);
+
+            let result = calculateFeeMoney(params.period, tier, billableWeight, params.category, params.price, logs);
+
+            return {
+                fee: result.total,
+                tier: tier,
+                billableWeight: billableWeight,
+                actualWeight: finalWeightLb,
+                dimWeight: dimWeight,
+                note: result.note,
+                surcharge: result.surcharge,
+                dimensions: `${finalL.toFixed(2)} x ${finalW.toFixed(2)} x ${finalH.toFixed(2)} in`,
+                breakdown: logs
+            };
+        }
+
+        function determineTier(l, w, h, wt, is2026) {
+            let girth = 2 * (w + h);
+            let gl = l + girth;
+            if (wt <= 1 && l <= 15 && w <= 12 && h <= 0.75) return { tier: 'Small Standard', gl };
+            if (wt <= 20 && l <= 18 && w <= 14 && h <= 8) return { tier: 'Large Standard', gl };
+            if (is2026) {
+                if (wt <= 50 && l <= 37 && w <= 28 && h <= 20 && gl <= 130) return { tier: 'Small Bulky', gl };
+            }
+            if (wt <= 50 && l <= 59 && w <= 33 && h <= 33 && gl <= 130) return { tier: 'Large Bulky', gl };
+            return { tier: 'Extra Large', gl };
+        }
+
+        // Helper: Get Fee Details + Prev/Next
+        function getFeeDetailsFromCard(card, tier, weightLb, wOz) {
+            let rows = card[tier];
+            if (!rows) return null;
+
+            for (let i = 0; i < rows.length; i++) {
+                let row = rows[i];
+                let match = false;
+                if (row.maxOz && wOz <= row.maxOz) match = true;
+                else if (row.maxLb && weightLb <= row.maxLb) match = true;
+                else if (row.base) match = true; // Catch-all for >3lb formulas
+
+                if (match) {
+                    let result = { fee: 0, currentDesc: '', prevDesc: null, nextDesc: null };
+                    
+                    // Current
+                    if (row.base) {
+                        let steps = Math.ceil((weightLb - 3) / row.interval);
+                        result.fee = row.base + (steps * row.stepPrice);
+                        result.currentDesc = `${tier} (>3lb): 基数$${row.base} + ${steps}x$${row.stepPrice}`;
+                        // Formula Prev/Next simulation
+                        if (steps > 1) {
+                            let prevFee = row.base + ((steps - 1) * row.stepPrice);
+                            result.prevDesc = `上个区间 (减重至 ${(3 + (steps-1)*row.interval).toFixed(2)}lb): $${prevFee.toFixed(2)}`;
+                        } else if (i > 0) {
+                            let prevRow = rows[i-1];
+                            result.prevDesc = `上个区间 (<= ${prevRow.maxLb}lb): $${prevRow.fee.toFixed(2)}`;
+                        }
+                        let nextFee = row.base + ((steps + 1) * row.stepPrice);
+                        result.nextDesc = `下个区间 (增重至 ${(3 + (steps+1)*row.interval).toFixed(2)}lb): $${nextFee.toFixed(2)}`;
+                    } else {
+                        result.fee = row.fee;
+                        let unit = row.maxOz ? `${row.maxOz}oz` : `${row.maxLb}lb`;
+                        result.currentDesc = `${tier} (<= ${unit})`;
+                        
+                        if (i > 0) {
+                            let prev = rows[i-1];
+                            let pUnit = prev.maxOz ? `${prev.maxOz}oz` : `${prev.maxLb}lb`;
+                            result.prevDesc = `上个区间 (<= ${pUnit}): $${prev.fee.toFixed(2)}`;
+                        }
+                        if (i < rows.length - 1) {
+                            let next = rows[i+1];
+                            let nUnit = next.maxOz ? `${next.maxOz}oz` : `${next.maxLb}lb`;
+                            result.nextDesc = `下个区间 (<= ${nUnit}): $${next.fee.toFixed(2)}`;
+                        } else if (rows[i].maxLb && rows[i].maxLb < 20) {
+                             // Handle transition from fixed table to formula if array ends but tier continues (rare in this data structure except typically handled by next array element)
+                        }
+                    }
+                    return result;
+                }
+            }
+            return null;
+        }
+
+        function calculateFeeMoney(period, tier, weightLb, category, price, logs) {
+            let fee = 0;
+            let note = "";
+            let wOz = weightLb * 16;
+            let isPeak = (period === '2025_peak');
+            let is2026 = (period === '2026_new');
+            let isLowPrice = (price > 0 && price < 10 && category !== 'dangerous');
+
+            // 1. SELECT CARD
+            let card = null;
+            if (is2026) {
+                if (isLowPrice) card = RATE_CARD_2026_LOW_STD;
+                else card = (category === 'apparel') ? RATE_CARD_2026_APP : RATE_CARD_2026_STD;
+            } else {
+                if (isLowPrice) {
+                    card = isPeak ? RATE_CARD_PEAK_LOW_STD : RATE_CARD_2025_LOW_STD;
+                } else {
+                    if (isPeak) card = (category === 'apparel') ? RATE_CARD_PEAK_APP : RATE_CARD_PEAK_STD;
+                    else card = (category === 'apparel') ? RATE_CARD_2025_APP : RATE_CARD_2025_STD;
+                }
+            }
+
+            // 2. LOOKUP OR CALCULATE
+            let lookup = getFeeDetailsFromCard(card, tier, weightLb, wOz);
+            
+            if (lookup) {
+                fee = lookup.fee;
+                logs.push(`[当前区间] ${lookup.currentDesc} -> <span class="step-highlight">$${fee.toFixed(2)}</span>`);
+                if (lookup.prevDesc) logs.push(`<span class="step-sub"><span class="badge-compare badge-prev">比对</span> ${lookup.prevDesc}</span>`);
+                if (lookup.nextDesc) logs.push(`<span class="step-sub"><span class="badge-compare badge-next">比对</span> ${lookup.nextDesc}</span>`);
+            } 
+            else {
+                // BULKY / XL LOGIC (Manual Breakdown)
+                let base = 0, extra = 0, unitPrice = 0.38, limit = 50;
+                let extraWeight = 0;
+                
+                if (is2026) {
+                    if (tier === 'Small Bulky') { base = 6.78; extraWeight = Math.ceil(weightLb-1); }
+                    else if (tier === 'Large Bulky') { base = 8.58; extraWeight = Math.ceil(weightLb-1); }
+                    else { base = 25.56; extraWeight = Math.ceil(weightLb-1); } // XL Simplified
+                } else {
+                    if (tier === 'Large Bulky') {
+                        if (isLowPrice && isPeak) base = 9.88;
+                        else if (isLowPrice) base = 8.84;
+                        else base = isPeak ? 10.65 : 9.61;
+                        extraWeight = Math.ceil(weightLb-1);
+                    } else {
+                        base = isPeak ? 28.29 : 26.33; 
+                        extraWeight = Math.ceil(weightLb-1);
+                    }
+                }
+                
+                if (extraWeight < 0) extraWeight = 0;
+                fee = base + (extraWeight * unitPrice);
+                
+                logs.push(`[当前区间] ${tier} (计费重 ${weightLb.toFixed(2)}lb): 基数$${base} + ${extraWeight}x$${unitPrice} -> <span class="step-highlight">$${fee.toFixed(2)}</span>`);
+                
+                // Generate Bulky Prev/Next
+                if (weightLb > 1) {
+                    let prevW = Math.floor(weightLb); // e.g., 4.2 -> 4.0
+                    if (prevW < 1) prevW = 1;
+                    let prevFee = base + Math.ceil(prevW - 1) * unitPrice;
+                    logs.push(`<span class="step-sub"><span class="badge-compare badge-prev">比对</span> 上个区间 (减重至 ${prevW}lb): $${prevFee.toFixed(2)}</span>`);
+                }
+                let nextW = Math.ceil(weightLb) + 1;
+                let nextFee = base + Math.ceil(nextW - 1) * unitPrice;
+                logs.push(`<span class="step-sub"><span class="badge-compare badge-next">比对</span> 下个区间 (增重至 ${nextW}lb): $${nextFee.toFixed(2)}</span>`);
+            }
+
+            // 2026 Price Band Delta
+            if (is2026 && !isLowPrice && (tier === 'Small Standard' || tier === 'Large Standard')) {
+                let delta = 0;
+                if (price > 50) {
+                    delta = (tier === 'Small Standard') ? 0.51 : 0.31;
+                    logs.push(`2026 售价>$50 附加费: +$${delta}`);
+                } else {
+                    if (tier === 'Small Standard') { delta = 0.25; logs.push(`2026 售价$10-$50 调整: +$${delta}`); }
+                    else { delta = 0.05; logs.push(`2026 售价$10-$50 调整: +$${delta}`); }
+                }
+                fee += delta;
+            }
+
+            // DG Adder
+            if (category === 'dangerous') {
+                let adder = DG_ADDER[tier] || 1.00;
+                fee += adder;
+                logs.push(`危险品附加费: +$${adder}`);
+            }
+
+            note = isLowPrice ? `低价FBA (${isPeak?'旺季':'非旺季'})` : (is2026 ? "2026标准" : (isPeak ? "2025旺季" : "2025标准"));
+            
+            return { total: fee, surcharge: 0, note: note };
+        }
+
+        // UI & Bulk (Unchanged)
+        function calculateUI() {
+            let l = parseFloat(document.getElementById('length').value);
+            let w = parseFloat(document.getElementById('width').value);
+            let h = parseFloat(document.getElementById('height').value);
+            let weight = parseFloat(document.getElementById('weight').value);
+            let price = parseFloat(document.getElementById('price').value) || 0;
+            let dimUnit = document.getElementById('dimUnit').value;
+            let weightUnit = document.getElementById('weightUnit').value;
+            let category = document.getElementById('categoryInput').value;
+            let period = document.getElementById('ratePeriod').value;
+
+            if (!l || !w || !h || !weight) { resetDisplay(); return; }
+            let result = calculateFBA({ l, w, h, dimUnit, weight, weightUnit, price, category, period });
+            updateDisplay(result, period, category);
+        }
+
+        function setCategoryUI(type) {
+            document.getElementById('categoryInput').value = type;
+            ['btn-std','btn-app','btn-dg'].forEach(id => document.getElementById(id).className = "flex-1 py-2 px-2 rounded-md text-xs font-medium text-gray-500 transition-all");
+            let activeMap = {'standard':'btn-std', 'apparel':'btn-app', 'dangerous':'btn-dg'};
+            document.getElementById(activeMap[type]).className = "flex-1 py-2 px-2 rounded-md text-xs font-medium bg-white text-blue-600 shadow-sm transition-all";
+            calculateUI();
+        }
+
+        function updateDisplay(res, period, category) {
+            if (!res || typeof res.fee !== 'number') return; 
+            document.getElementById('feeDisplay').innerText = '$' + res.fee.toFixed(2);
+            const badgeContainer = document.getElementById('feeBadges');
+            badgeContainer.innerHTML = '';
+            let typeLabel = category === 'dangerous' ? '危险品' : (category === 'apparel' ? '服装类' : '非服装类');
+            let typeColor = category === 'dangerous' ? 'orange' : (category === 'apparel' ? 'blue' : 'gray');
+            badgeContainer.innerHTML += `<span class="bg-${typeColor}-100 text-${typeColor}-700 px-2 py-1 rounded text-xs font-semibold">${typeLabel}</span>`;
+            
+            document.getElementById('tierDisplay').innerText = res.tier === 'Small Standard' ? '小号标准' : (res.tier === 'Large Standard' ? '大号标准' : (res.tier === 'Large Bulky' ? '大号大件' : (res.tier === 'Small Bulky' ? '小号大件' : '超大尺寸')));
+            document.getElementById('dimDisplay').innerText = res.dimensions;
+            document.getElementById('billableWeightDisplay').innerText = res.billableWeight.toFixed(2) + ' lb';
+            document.getElementById('actualWeightDisplay').innerText = res.actualWeight.toFixed(2) + ' lb';
+            document.getElementById('dimWeightDisplay').innerText = res.dimWeight.toFixed(2) + ' lb';
+            
+            const logDiv = document.getElementById('calculationBreakdown');
+            logDiv.innerHTML = res.breakdown.map(step => `<div class="step-item">${step}</div>`).join('');
+
+            const seasonBadge = document.getElementById('seasonBadge');
+            seasonBadge.style.display = period === '2025_std' ? 'none' : 'block';
+            seasonBadge.innerText = period === '2026_new' ? '2026 新政 (三档定价)' : '2025 旺季费率生效中';
+            seasonBadge.className = `absolute top-0 right-0 ${period === '2026_new' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} text-xs font-bold px-3 py-1 rounded-bl-lg`;
+        }
+
+        function resetDisplay() {
+            document.getElementById('feeDisplay').innerText = "$0.00";
+            document.getElementById('tierDisplay').innerText = "-";
+            document.getElementById('calculationBreakdown').innerHTML = '<p class="text-gray-400 italic">等待输入数据...</p>';
+        }
+
+        function switchTab(tab) {
+            document.getElementById('section-single').className = tab === 'single' ? "grid grid-cols-1 lg:grid-cols-3 gap-8" : "hidden";
+            document.getElementById('section-bulk').className = tab === 'bulk' ? "grid grid-cols-1 md:grid-cols-2 gap-10" : "hidden";
+            document.getElementById('tab-single').className = tab === 'single' ? "pb-3 px-2 tab-active flex items-center gap-2 cursor-pointer" : "pb-3 px-2 tab-inactive flex items-center gap-2 cursor-pointer";
+            document.getElementById('tab-bulk').className = tab === 'bulk' ? "pb-3 px-2 tab-active flex items-center gap-2 cursor-pointer" : "pb-3 px-2 tab-inactive flex items-center gap-2 cursor-pointer";
+        }
+        function downloadTemplate() {
+            const data = [{ "商品名称": "示例", "长": 10, "宽": 8, "高": 1, "尺寸单位": "in", "重量": 0.5, "重量单位": "lb", "商品售价": 15, "商品类型": "一般产品" }];
+            XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(), XLSX.utils.json_to_sheet(data), "Template"), "FBA模板.xlsx");
+        }
+        function processBulkUpload() {
+            const f = document.getElementById('uploadFile').files[0];
+            if(!f) return alert("请上传文件");
+            const r = new FileReader();
+            r.onload = e => {
+                const d = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), {type:'array'}).Sheets[XLSX.read(new Uint8Array(e.target.result), {type:'array'}).SheetNames[0]]);
+                const res = d.map(row => {
+                    let cat = 'standard';
+                    if((row['商品类型']||'').includes('服装')) cat='apparel';
+                    if((row['商品类型']||'').includes('危险')) cat='dangerous';
+                    let r = calculateFBA({
+                        l: row['长'], w: row['宽'], h: row['高'], dimUnit: (row['尺寸单位']||'cm').toLowerCase(),
+                        weight: row['重量'], weightUnit: (row['重量单位']||'kg').toLowerCase(),
+                        price: row['商品售价'], category: cat, period: document.getElementById('bulkRatePeriod').value
+                    });
+                    return { ...row, "预估FBA费": r.fee, "尺寸分段": r.tier, "计费重": r.billableWeight, "备注": r.note };
+                });
+                XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(), XLSX.utils.json_to_sheet(res), "Result"), "FBA结果.xlsx");
+            };
+            r.readAsArrayBuffer(f);
+        }
+    </script>
+</body>
+</html>
