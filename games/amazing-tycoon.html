@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>姐夫模拟器 - Amazing 大卖之路</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f3f3;
+            user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+            transition: background-color 0.5s;
+        }
+
+        /* Prime Day 爆单模式特效 */
+        body.prime-day-active {
+            background-color: #fff7e6; /* 淡淡的金色背景 */
+        }
+        
+        .prime-day-border {
+            position: absolute;
+            inset: 0;
+            border: 0px solid #FF9900;
+            pointer-events: none;
+            z-index: 40;
+            transition: border-width 0.3s;
+        }
+        body.prime-day-active .prime-day-border {
+            border-width: 8px;
+            animation: borderPulse 1s infinite;
+        }
+        
+        @keyframes borderPulse {
+            0% { border-color: #FF9900; }
+            50% { border-color: #FFC400; }
+            100% { border-color: #FF9900; }
+        }
+
+        .theme-dark { background-color: #232F3E; }
+        .theme-light { background-color: #37475A; }
+        .theme-orange { background-color: #FF9900; color: #111; }
+        .theme-btn:active { transform: scale(0.95); }
+        .theme-btn:hover { filter: brightness(1.1); }
+
+        .floating-number {
+            position: absolute;
+            color: #166534;
+            font-weight: 900;
+            font-size: 1.5rem;
+            text-shadow: 0 2px 4px rgba(255,255,255,0.8);
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            z-index: 100;
+        }
+        
+        /* 爆单时的数字特效 */
+        .prime-day-active .floating-number {
+            color: #d97706; /* 金色 */
+            font-size: 2rem;
+            text-shadow: 0 2px 10px rgba(255, 215, 0, 0.6);
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        .badge-shine { animation: shine 2s infinite; }
+        @keyframes shine {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        /* 随机事件按钮动画 */
+        .event-spawn-anim {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0) rotate(-180deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        /* 模态框样式 */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(35, 47, 62, 0.95); /* Amazon Dark Blue 遮罩 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 60;
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s;
+            padding: 20px;
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="h-screen flex flex-col relative">
+
+    <!-- 爆单模式边框特效 -->
+    <div class="prime-day-border"></div>
+
+    <!-- 顶部导航栏 -->
+    <header class="theme-dark text-white p-4 shadow-lg flex justify-between items-center z-10 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="relative">
+                <i class="fas fa-truck-fast text-2xl transform -scale-x-100"></i>
+                <div class="absolute -bottom-1 -right-1 text-[10px] text-orange-400 font-bold">Amz</div>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight italic">Amazing Tycoon</h1>
+                <p class="text-xs text-gray-400">姐夫模拟器 (v1.3)</p>
+            </div>
+        </div>
+        <div class="text-right">
+            <button onclick="resetGame()" class="text-xs text-gray-400 hover:text-white underline mr-2">删档重来</button>
+            <button onclick="saveGame()" class="text-xs text-gray-400 hover:text-white underline">手动保存</button>
+        </div>
+    </header>
+
+    <!-- 游戏主区域 -->
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        
+        <!-- 随机事件出现区域 (绝对定位覆盖全屏，点击穿透) -->
+        <div id="event-layer" class="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+            <!-- 随机按钮会在这里生成 -->
+        </div>
+
+        <!-- 左侧：操作区 -->
+        <div class="w-full md:w-1/3 bg-white border-r border-gray-300 flex flex-col relative p-4 items-center justify-center gap-6 shadow-md z-0 transition-colors duration-300" id="left-panel">
+            
+            <!-- 店铺等级徽章 -->
+            <div id="rank-badge" class="absolute top-4 left-4 bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                <i class="fas fa-user-tag mr-1"></i> <span id="rank-name">新手卖家</span>
+            </div>
+
+            <!-- Prime Day 倒计时 (默认隐藏) -->
+            <div id="prime-timer" class="hidden absolute top-16 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-4 py-1 rounded-full shadow-lg font-bold border-2 border-white animate-pulse z-20">
+                <i class="fas fa-bolt mr-1"></i> Prime Day: <span id="prime-time-left">20</span>s
+            </div>
+
+            <!-- Best Seller 标志 -->
+            <div id="bs-badge" class="hidden absolute top-4 right-4 bg-[#C45500] text-white px-2 py-1 text-xs font-bold -skew-x-12 badge-shine border-white border">
+                #1 Best Seller
+            </div>
+
+            <!-- 数据显示 -->
+            <div class="text-center w-full z-10">
+                <p class="text-gray-500 text-sm mb-1">今日销售额 (Balance)</p>
+                <div class="text-5xl font-bold text-gray-800 flex justify-center items-start h-16 transition-colors" id="balance-container">
+                    <span class="text-2xl mt-2 mr-1">$</span>
+                    <span id="balance-display">0.00</span>
+                </div>
+                <div class="mt-2 text-green-600 font-medium bg-green-50 inline-block px-3 py-1 rounded-lg border border-green-200 transition-all" id="income-badge">
+                    + $<span id="income-rate">0.00</span> / 秒
+                </div>
+            </div>
+
+            <!-- 点击按钮 -->
+            <div class="relative group touch-manipulation z-10">
+                <button id="click-btn" class="w-48 h-48 rounded-full theme-orange shadow-2xl border-4 border-yellow-500 flex flex-col items-center justify-center transition-all theme-btn group-hover:shadow-orange-500/50 outline-none tap-highlight-transparent relative overflow-hidden">
+                    <!-- 爆单特效背景 -->
+                    <div id="btn-shine" class="absolute inset-0 bg-yellow-300 opacity-0 transition-opacity duration-300"></div>
+                    
+                    <div class="relative z-10 flex flex-col items-center">
+                        <i class="fas fa-box-open text-6xl text-gray-900 mb-2 pointer-events-none"></i>
+                        <span class="font-bold text-xl text-gray-900 pointer-events-none">手动发货</span>
+                        <span class="text-xs text-gray-800 mt-1 pointer-events-none">FBM 自发货</span>
+                    </div>
+                </button>
+                <div class="absolute -inset-4 rounded-full border-2 border-dashed border-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity animate-spin-slow pointer-events-none" style="animation-duration: 10s;"></div>
+            </div>
+
+            <div class="text-center mt-4 z-10">
+                <p class="text-xs text-gray-400">点击按钮发货赚取第一桶金</p>
+                <div class="mt-4 w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 max-w-[200px] mx-auto overflow-hidden">
+                    <div id="xp-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <p class="text-[10px] text-gray-400 mt-1">距离下一等级还需: $<span id="next-level-cost">100</span></p>
+            </div>
+        </div>
+
+        <!-- 右侧：升级商店 -->
+        <div class="w-full md:w-2/3 bg-gray-50 flex flex-col h-full z-10">
+            <div class="p-3 bg-white border-b border-gray-200 shadow-sm flex justify-between items-center">
+                <h2 class="font-bold text-gray-800"><i class="fas fa-shopping-cart mr-2 text-yellow-600"></i>资源升级</h2>
+                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">升级可增加自动收入</span>
+            </div>
+            
+            <!-- 列表容器 -->
+            <div id="upgrade-list" class="flex-1 overflow-y-auto p-4 space-y-3 pb-20 md:pb-4">
+                <!-- 升级项目将通过 JS 动态插入这里 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 开场引导弹窗 -->
+    <div id="start-modal" class="modal">
+        <div class="bg-gray-800 p-6 rounded-2xl max-w-sm w-full border border-gray-700 shadow-2xl relative text-center">
+            
+            <!-- 图标装饰 -->
+            <div class="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-orange-500">
+                <i class="fas fa-rocket text-3xl text-orange-500"></i>
+            </div>
+
+            <h2 class="text-2xl font-bold text-white mb-1">欢迎加入 Amazing</h2>
+            <p class="text-gray-400 text-xs uppercase tracking-widest mb-6">从小白到首富的逆袭之路</p>
+
+            <!-- 玩法介绍列表 -->
+            <div class="space-y-4 text-left mb-8">
+                <div class="flex items-start gap-3 bg-gray-700/50 p-3 rounded-lg">
+                    <div class="mt-0.5 text-orange-400"><i class="fas fa-hand-pointer"></i></div>
+                    <div>
+                        <h3 class="text-white font-bold text-sm">点击发货</h3>
+                        <p class="text-gray-400 text-xs">点击左侧大按钮赚取第一桶金。</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start gap-3 bg-gray-700/50 p-3 rounded-lg">
+                    <div class="mt-0.5 text-green-400"><i class="fas fa-chart-line"></i></div>
+                    <div>
+                        <h3 class="text-white font-bold text-sm">资源升级</h3>
+                        <p class="text-gray-400 text-xs">购买右侧运营资源，实现自动躺赚。</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3 bg-gray-700/50 p-3 rounded-lg">
+                    <div class="mt-0.5 text-yellow-400"><i class="fas fa-bolt"></i></div>
+                    <div>
+                        <h3 class="text-white font-bold text-sm">Prime Day 爆单</h3>
+                        <p class="text-gray-400 text-xs">点击随机出现的闪电图标，收益翻5倍！</p>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="startGameLoop()" class="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-gray-900 font-bold py-3 rounded-xl shadow-lg transition transform hover:scale-105">
+                开始创业 (Start)
+            </button>
+        </div>
+    </div>
+
+    <!-- 消息提示框 -->
+    <div id="toast-container" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex flex-col gap-2 pointer-events-none z-50"></div>
+
+    <script>
+        // --- 游戏配置 ---
+        const upgradesConfig = [
+            { id: 1, name: "二手纸箱", desc: "去超市捡纸箱打包", baseCost: 15, income: 0.5, icon: "fa-recycle", color: "text-green-600" },
+            { id: 2, name: "跟卖辅助", desc: "半夜查看竞品链接", baseCost: 100, income: 4, icon: "fa-copy", color: "text-gray-600" },
+            { id: 3, name: "测评服务", desc: "优化 Listing 评分", baseCost: 1100, income: 16, icon: "fa-star", color: "text-yellow-500" },
+            { id: 4, name: "PPC 广告", desc: "烧钱换流量，停不下来", baseCost: 12000, income: 64, icon: "fa-bullhorn", color: "text-blue-600" },
+            { id: 5, name: "Amazing 物流", desc: "整柜海运，时效随缘", baseCost: 130000, income: 260, icon: "fa-ship", color: "text-blue-800" },
+            { id: 6, name: "私模开发", desc: "打造品牌护城河", baseCost: 1400000, income: 1200, icon: "fa-fingerprint", color: "text-purple-600" },
+            { id: 7, name: "收购竞对", desc: "打不过就买下来", baseCost: 20000000, income: 6500, icon: "fa-briefcase", color: "text-red-700" },
+            { id: 8, name: "蓝色起源", desc: "把快递送到火星去", baseCost: 330000000, income: 45000, icon: "fa-rocket", color: "text-indigo-600" }
+        ];
+
+        const ranks = [
+            { threshold: 0, name: "新手小白" },
+            { threshold: 500, name: "搬砖工" },
+            { threshold: 2500, name: "FBM 勇士" },
+            { threshold: 10000, name: "精品运营" },
+            { threshold: 50000, name: "Best Seller" },
+            { threshold: 500000, name: "类目霸主" },
+            { threshold: 10000000, name: "大麦 (Big Seller)" },
+            { threshold: 100000000, name: "姐夫的好朋友" }
+        ];
+
+        // --- 游戏状态 ---
+        let gameState = {
+            balance: 0,
+            lifetimeEarnings: 0,
+            clickCount: 0,
+            upgrades: {}
+        };
+
+        // --- 运行时状态 (不存档) ---
+        let isPrimeDay = false;
+        let primeDayTimer = null;
+        let primeDayEndTime = 0;
+        let eventSpawnTimer = null;
+        let gameRunning = false; // 游戏是否正式开始
+
+        // --- 初始化 ---
+        window.onload = function() {
+            try {
+                // 1. 加载数据但不开始循环
+                loadGame();
+                renderUpgrades();
+                updateUI();
+                
+                // 2. 绑定事件
+                const mainBtn = document.getElementById('click-btn');
+                if (mainBtn) {
+                    mainBtn.addEventListener('click', clickMainBtn);
+                    mainBtn.addEventListener('touchstart', function(e) {
+                        e.preventDefault();
+                        clickMainBtn(e.touches[0]); 
+                    }, {passive: false});
+                }
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        clickMainBtn();
+                    }
+                });
+
+                console.log("Amazing Tycoon Ready. Waiting for start.");
+                
+                // 注意：这里不再直接启动 setInterval，而是等待用户点击弹窗
+
+            } catch (err) {
+                console.error("Error:", err);
+            }
+        };
+
+        // --- 启动游戏逻辑 ---
+        function startGameLoop() {
+            // 隐藏弹窗
+            document.getElementById('start-modal').classList.add('hidden');
+            
+            if (!gameRunning) {
+                gameRunning = true;
+                // 启动循环
+                setInterval(gameLoop, 100);
+                setInterval(saveGame, 30000);
+                setInterval(checkRandomEvent, 1000);
+                
+                showToast("公司正式开业！加油赚钱！");
+            }
+        }
+
+        // --- 核心逻辑 ---
+
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            let incomePerSec = calculateIncomePerSec();
+            if (incomePerSec > 0) {
+                let incomePerTick = incomePerSec / 10;
+                addMoney(incomePerTick, false);
+            }
+
+            // 更新 Prime Day 倒计时
+            if (isPrimeDay) {
+                const timeLeft = Math.max(0, Math.ceil((primeDayEndTime - Date.now()) / 1000));
+                document.getElementById('prime-time-left').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    endPrimeDay();
+                }
+            }
+        }
+
+        function clickMainBtn(event) {
+            // 如果还没开始游戏（弹窗未关），点击无效或自动开始
+            if (!gameRunning) return;
+
+            let baseIncome = calculateBaseIncomePerSec();
+            let clickValue = 1 + (baseIncome * 0.1);
+            
+            if (isPrimeDay) {
+                clickValue *= 5;
+            }
+
+            addMoney(clickValue, true);
+            createFloatingText(event, `+$${formatNumber(clickValue)}`);
+            
+            // 动画
+            const btn = document.getElementById('click-btn');
+            btn.style.transform = "scale(0.95)";
+            setTimeout(() => btn.style.transform = "scale(1)", 80);
+        }
+
+        function addMoney(amount, isActive) {
+            if (typeof amount !== 'number' || isNaN(amount)) return;
+            gameState.balance += amount;
+            if (isActive) {
+                gameState.lifetimeEarnings += amount;
+                gameState.clickCount++;
+                checkRank();
+            }
+            updateUI();
+        }
+
+        function calculateBaseIncomePerSec() {
+            let total = 0;
+            upgradesConfig.forEach(u => {
+                const count = gameState.upgrades[u.id] || 0;
+                total += count * u.income;
+            });
+            return total;
+        }
+
+        function calculateIncomePerSec() {
+            let income = calculateBaseIncomePerSec();
+            // Prime Day 收益翻 5 倍
+            if (isPrimeDay) {
+                income *= 5;
+            }
+            return income;
+        }
+
+        // --- 随机事件系统 ---
+
+        function checkRandomEvent() {
+            // 如果已经在 Prime Day，不生成新事件
+            if (isPrimeDay) return;
+            // 如果屏幕上已经有按钮了，不生成
+            if (document.querySelector('.event-btn-active')) return;
+
+            // 1% 的概率每秒生成 (平均100秒一次)
+            // 随着等级提高，概率稍微增加一点点点
+            const chance = 0.01 + (gameState.lifetimeEarnings > 10000 ? 0.01 : 0);
+            
+            if (Math.random() < chance) {
+                spawnEventButton();
+            }
+        }
+
+        function spawnEventButton() {
+            const container = document.getElementById('event-layer');
+            const btn = document.createElement('div');
+            
+            // 随机位置 (避开太靠边的位置)
+            const top = 10 + Math.random() * 70; // 10% - 80%
+            const left = 10 + Math.random() * 70; 
+
+            btn.className = "absolute w-16 h-16 bg-yellow-400 rounded-full border-4 border-white shadow-2xl flex items-center justify-center cursor-pointer event-btn-active pointer-events-auto event-spawn-anim z-50 animate-bounce";
+            btn.style.top = top + "%";
+            btn.style.left = left + "%";
+            
+            btn.innerHTML = `<i class="fas fa-bolt text-2xl text-red-600"></i>`;
+            
+            // 点击触发
+            btn.onclick = function() {
+                triggerPrimeDay();
+                btn.remove();
+            };
+
+            container.appendChild(btn);
+
+            // 10秒不点就消失
+            setTimeout(() => {
+                if (btn.parentNode) {
+                    btn.style.opacity = '0';
+                    setTimeout(() => btn.remove(), 500);
+                }
+            }, 10000);
+        }
+
+        function triggerPrimeDay() {
+            isPrimeDay = true;
+            primeDayEndTime = Date.now() + 20000; // 20秒持续时间
+            
+            // 视觉变化
+            document.body.classList.add('prime-day-active');
+            document.getElementById('prime-timer').classList.remove('hidden');
+            document.getElementById('btn-shine').style.opacity = '0.5';
+            
+            // 文本颜色变得更激动
+            document.getElementById('balance-container').classList.add('text-yellow-600');
+            document.getElementById('income-badge').classList.add('bg-yellow-100', 'text-yellow-800', 'border-yellow-300');
+            
+            showToast("🔥 Prime Day 爆单开始！收益 x5倍！🔥");
+            updateUI(); // 立即刷新显示的秒伤
+        }
+
+        function endPrimeDay() {
+            isPrimeDay = false;
+            
+            document.body.classList.remove('prime-day-active');
+            document.getElementById('prime-timer').classList.add('hidden');
+            document.getElementById('btn-shine').style.opacity = '0';
+            
+            document.getElementById('balance-container').classList.remove('text-yellow-600');
+            document.getElementById('income-badge').classList.remove('bg-yellow-100', 'text-yellow-800', 'border-yellow-300');
+            
+            showToast("Prime Day 结束，回到日常搬砖...");
+            updateUI();
+        }
+
+        // --- 购买逻辑 ---
+
+        function buyUpgrade(id) {
+            const upgrade = upgradesConfig.find(u => u.id === id);
+            const count = gameState.upgrades[id] || 0;
+            const cost = Math.floor(upgrade.baseCost * Math.pow(1.15, count));
+
+            if (gameState.balance >= cost) {
+                gameState.balance -= cost;
+                gameState.upgrades[id] = count + 1;
+                
+                showToast(`购买成功: ${upgrade.name}`);
+                renderUpgrades();
+                updateUI();
+                checkRank();
+            } else {
+                showToast("余额不足！快去手动发货或等 Prime Day！", "error");
+            }
+        }
+
+        // --- UI 更新 ---
+
+        function updateUI() {
+            const balance = isNaN(gameState.balance) ? 0 : gameState.balance;
+            const rate = calculateIncomePerSec(); // 这里已经包含 Prime Day 加成了
+
+            document.getElementById('balance-display').innerText = formatNumber(balance);
+            document.getElementById('income-rate').innerText = formatNumber(rate);
+            
+            // 如果正在爆单，给秒伤加个火焰图标
+            if (isPrimeDay) {
+                 document.getElementById('income-rate').innerHTML = `<i class="fas fa-fire text-red-500"></i> ${formatNumber(rate)}`;
+            }
+
+            upgradesConfig.forEach(u => {
+                const count = gameState.upgrades[u.id] || 0;
+                const cost = Math.floor(u.baseCost * Math.pow(1.15, count));
+                const btn = document.getElementById(`btn-upgrade-${u.id}`);
+                const costSpan = document.getElementById(`cost-upgrade-${u.id}`);
+                
+                if (btn) {
+                    if (gameState.balance >= cost) {
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        btn.classList.add('hover:bg-gray-100');
+                    } else {
+                        btn.classList.add('opacity-50', 'cursor-not-allowed');
+                        btn.classList.remove('hover:bg-gray-100');
+                    }
+                    costSpan.innerText = formatNumber(cost);
+                }
+            });
+        }
+
+        function renderUpgrades() {
+            const container = document.getElementById('upgrade-list');
+            container.innerHTML = '';
+
+            upgradesConfig.forEach(u => {
+                const count = gameState.upgrades[u.id] || 0;
+                const cost = Math.floor(u.baseCost * Math.pow(1.15, count));
+                
+                const item = document.createElement('div');
+                item.className = "bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex items-center justify-between transition-all cursor-pointer select-none";
+                item.id = `btn-upgrade-${u.id}`;
+                item.onclick = () => buyUpgrade(u.id);
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-4 pointer-events-none">
+                        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl ${u.color}">
+                            <i class="fas ${u.icon}"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-800 text-sm md:text-base">${u.name}</h3>
+                            <p class="text-xs text-gray-500 line-clamp-1">${u.desc}</p>
+                            <p class="text-xs text-green-600 font-medium mt-1">+ $${formatNumber(u.income)} / 秒</p>
+                        </div>
+                    </div>
+                    <div class="text-right min-w-[80px] pointer-events-none">
+                        <div class="text-2xl font-bold text-gray-200 absolute right-4 top-2 -z-10 opacity-20">${count}</div>
+                        <p class="font-bold text-orange-600">$<span id="cost-upgrade-${u.id}">${formatNumber(cost)}</span></p>
+                        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full mt-1 inline-block">拥有: ${count}</span>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // --- 辅助功能 ---
+
+        function checkRank() {
+            let currentRank = ranks[0];
+            let nextRankCost = ranks[1].threshold;
+            const earnings = gameState.lifetimeEarnings || 0;
+
+            for (let i = 0; i < ranks.length; i++) {
+                if (earnings >= ranks[i].threshold) {
+                    currentRank = ranks[i];
+                    nextRankCost = ranks[i+1] ? ranks[i+1].threshold : earnings * 2; 
+                }
+            }
+
+            document.getElementById('rank-name').innerText = currentRank.name;
+            const progress = Math.min(100, ((earnings - currentRank.threshold) / (nextRankCost - currentRank.threshold)) * 100);
+            const bar = document.getElementById('xp-bar');
+            if(bar) bar.style.width = `${isNaN(progress) ? 0 : progress}%`;
+            const nextCostEl = document.getElementById('next-level-cost');
+            if(nextCostEl) nextCostEl.innerText = formatNumber(nextRankCost - earnings);
+
+            const badge = document.getElementById('bs-badge');
+            if (earnings >= 50000 && badge) badge.classList.remove('hidden');
+        }
+
+        function createFloatingText(e, text) {
+            const el = document.createElement('div');
+            el.className = 'floating-number';
+            el.innerText = text;
+            
+            const randomX = (Math.random() - 0.5) * 50;
+            let x, y;
+            if (e && (e.clientX || e.pageX)) {
+                x = e.clientX || e.pageX;
+                y = e.clientY || e.pageY;
+            } else {
+                const btn = document.getElementById('click-btn');
+                if (btn) {
+                    const rect = btn.getBoundingClientRect();
+                    x = rect.left + rect.width / 2;
+                    y = rect.top + rect.height / 2;
+                } else {
+                    x = window.innerWidth / 2;
+                    y = window.innerHeight / 2;
+                }
+            }
+            el.style.left = `${x + randomX}px`;
+            el.style.top = `${y - 40}px`;
+            document.body.appendChild(el);
+            setTimeout(() => { if(el.parentNode) el.remove(); }, 800);
+        }
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-gray-800';
+            toast.className = `${bgColor} text-white text-xs md:text-sm py-2 px-4 rounded shadow-lg opacity-0 transition-opacity duration-300 transform translate-y-4`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-4'));
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => { if(toast.parentNode) toast.remove(); }, 300);
+            }, 2000);
+        }
+
+        function formatNumber(num) {
+            if (typeof num !== 'number' || isNaN(num)) return "0";
+            if (num < 1000) return Math.floor(num);
+            const suffixes = ["", "k", "M", "B", "T"];
+            const suffixNum = Math.floor(("" + Math.floor(num)).length / 3);
+            let shortValue = parseFloat((suffixNum != 0 ? (num / Math.pow(1000, suffixNum)) : num).toPrecision(3));
+            if (shortValue % 1 != 0) shortValue = shortValue.toFixed(1);
+            return shortValue + (suffixes[suffixNum] || "");
+        }
+
+        // --- 存档 ---
+        function saveGame() {
+            try {
+                localStorage.setItem('amazingTycoonSave', JSON.stringify(gameState));
+                if (event && event.type === 'click') showToast("游戏已保存");
+            } catch (e) { console.warn("Save failed"); }
+        }
+
+        function loadGame() {
+            try {
+                let save = localStorage.getItem('amazingTycoonSave') || localStorage.getItem('amazonTycoonSave');
+                if (save) {
+                    const parsed = JSON.parse(save);
+                    if (parsed) {
+                        gameState.balance = Number(parsed.balance) || 0;
+                        gameState.lifetimeEarnings = Number(parsed.lifetimeEarnings) || 0;
+                        gameState.clickCount = Number(parsed.clickCount) || 0;
+                        if (parsed.upgrades) gameState.upgrades = parsed.upgrades;
+                        if (gameState.balance < 0) gameState.balance = 0;
+                    }
+                    checkRank();
+                }
+            } catch (e) { console.error("Load failed"); }
+        }
+
+        function resetGame() {
+            if(confirm("确定要删档重来吗？")) {
+                localStorage.removeItem('amazingTycoonSave');
+                localStorage.removeItem('amazonTycoonSave');
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

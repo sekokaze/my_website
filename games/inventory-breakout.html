@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>清库存打砖块 - IPI 分数保卫战</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #232F3E; /* Amazon Dark Blue */
+            color: white;
+            overflow: hidden;
+            touch-action: none; /* 禁止默认触摸动作 */
+        }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            margin: 0 auto;
+        }
+
+        canvas {
+            background-color: #f3f3f3;
+            display: block;
+            border-bottom: 6px solid #FF9900;
+        }
+
+        /* IPI 仪表盘 */
+        .ipi-meter {
+            width: 100%;
+            height: 8px;
+            background: #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .ipi-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ef4444 0%, #eab308 50%, #22c55e 100%);
+            width: 100%; /* JS 控制 */
+            transition: width 0.3s ease;
+        }
+
+        /* Modal Overlay */
+        .modal {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(35, 47, 62, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            backdrop-filter: blur(4px);
+            padding: 20px;
+        }
+        .hidden { display: none !important; }
+
+        .btn-primary {
+            background: #FF9900;
+            color: #111;
+            font-weight: bold;
+            padding: 12px 32px;
+            border-radius: 99px;
+            border: 2px solid #fff;
+            transition: all 0.2s;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+        .btn-primary:active { transform: scale(0.95); }
+        .btn-primary:hover { filter: brightness(1.1); }
+
+        /* 飘字特效 */
+        .floating-text {
+            position: absolute;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            font-size: 14px;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-30px); }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- 顶部 HUD -->
+    <div id="game-hud" class="bg-gray-800 p-3 shadow-md z-10 shrink-0">
+        <!-- 新增：游戏标题栏 -->
+        <div class="max-w-md mx-auto mb-2 flex items-center gap-2 border-b border-gray-700 pb-2">
+            <i class="fas fa-boxes text-yellow-500"></i>
+            <h1 class="font-bold text-white text-sm tracking-wide italic">IPI 分数保卫战</h1>
+            <span class="text-[10px] text-gray-500 bg-gray-900 px-1 rounded ml-auto">v1.1</span>
+        </div>
+
+        <!-- 原有：数据统计 -->
+        <div class="max-w-md mx-auto flex justify-between items-end mb-1">
+            <div>
+                <div class="text-xs text-gray-400">节省仓储费 (Saved)</div>
+                <div class="text-xl font-bold text-green-400">$<span id="score-display">0</span></div>
+            </div>
+            <div class="text-right w-1/2">
+                <div class="flex justify-between text-xs text-gray-400 mb-1">
+                    <span>IPI 分数</span>
+                    <span id="ipi-value" class="font-bold text-green-400">500</span>
+                </div>
+                <div class="ipi-meter">
+                    <div id="ipi-bar" class="ipi-fill" style="width: 80%;"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-gray-500 mt-1">
+                    <span>0</span>
+                    <span class="text-red-400">350</span>
+                    <span>1000</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏区域 -->
+    <div class="flex-1 flex items-center justify-center bg-gray-900 w-full overflow-hidden">
+        <div id="game-container" class="relative">
+            <canvas id="gameCanvas"></canvas>
+            
+            <!-- 初始介绍弹窗 (Start Screen) -->
+            <div id="start-screen" class="modal">
+                <div class="bg-gray-800 p-6 rounded-lg max-w-sm w-full border border-gray-600 shadow-2xl relative">
+                    <!-- 装饰背景图标 -->
+                    <i class="fas fa-warehouse absolute -top-6 -right-6 text-8xl text-gray-700 opacity-20 pointer-events-none"></i>
+                    
+                    <div class="text-center mb-6 relative z-10">
+                        <div class="inline-block p-3 bg-gray-700 rounded-full mb-3 border border-gray-600">
+                            <i class="fas fa-boxes text-4xl text-yellow-500"></i>
+                        </div>
+                        <h1 class="text-2xl font-bold text-white tracking-tight">IPI 分数保卫战</h1>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-[0.2em] mt-1">IPI Defense</div>
+                    </div>
+                    
+                    <div class="space-y-4 text-sm text-gray-300 mb-8 relative z-10">
+                        <div class="flex items-start gap-3">
+                            <div class="mt-1 min-w-[20px] text-center"><i class="fas fa-exclamation-circle text-red-400"></i></div>
+                            <div>
+                                <span class="text-white font-bold block mb-0.5">危机警告</span>
+                                仓库爆仓，IPI 分数岌岌可危！跌破 <span class="text-red-400 font-bold">350分</span> 将被限制发货。
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-3">
+                            <div class="mt-1 min-w-[20px] text-center"><i class="fas fa-gamepad text-orange-400"></i></div>
+                            <div>
+                                <span class="text-white font-bold block mb-0.5">操作指南</span>
+                                左右滑动 <span class="text-orange-400 font-bold">Coupon 折扣券</span> 接住流量球，击碎上方冗余库存。
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-900/50 p-3 rounded border border-gray-700 text-xs text-center text-gray-400">
+                            <i class="fas fa-skull-crossbones mr-1"></i> 注意：每漏接一个球，IPI 扣 <span class="text-red-400 font-bold">50分</span>！
+                        </div>
+                    </div>
+
+                    <button onclick="startGame()" class="w-full btn-primary flex items-center justify-center gap-2 text-lg group relative z-10 shadow-lg shadow-orange-900/20">
+                        <span>立即清货</span>
+                        <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 结算界面 (Game Over Screen) -->
+            <div id="game-over-screen" class="modal hidden">
+                <i id="result-icon" class="fas fa-exclamation-triangle text-6xl text-red-500 mb-4 animate-bounce"></i>
+                <h2 id="result-title" class="text-2xl font-bold mb-2 text-white">限制发货!</h2>
+                <p id="result-desc" class="text-gray-400 text-sm mb-6 text-center px-6">IPI 分数过低，账号被限制。</p>
+                
+                <div class="grid grid-cols-2 gap-4 mb-8 w-full px-8 max-w-sm">
+                    <div class="bg-gray-700 p-3 rounded text-center border border-gray-600">
+                        <div class="text-xs text-gray-400 uppercase">最终 IPI</div>
+                        <div id="final-ipi" class="text-2xl font-bold text-white">0</div>
+                    </div>
+                    <div class="bg-gray-700 p-3 rounded text-center border border-gray-600">
+                        <div class="text-xs text-gray-400 uppercase">节省费用</div>
+                        <div id="final-score" class="text-2xl font-bold text-green-400">$0</div>
+                    </div>
+                </div>
+
+                <button onclick="startGame()" class="btn-primary flex items-center gap-2">
+                    <i class="fas fa-redo"></i> 重新开始
+                </button>
+            </div>
+            
+            <!-- 触摸提示 -->
+            <div id="touch-hint" class="absolute bottom-20 w-full text-center pointer-events-none opacity-50 animate-pulse text-gray-800 hidden font-bold text-lg">
+                <span class="bg-white/80 px-4 py-2 rounded-full shadow-lg backdrop-blur-sm">
+                    <i class="fas fa-hand-pointer mr-2"></i> 左右拖动控制折扣券
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('game-container');
+        const hud = document.getElementById('game-hud'); // 获取 HUD 元素
+
+        // --- 游戏配置 ---
+        let dpr = window.devicePixelRatio || 1;
+        let animationId;
+        let isRunning = false;
+
+        // IPI 系统
+        const MAX_IPI = 1000;
+        const MIN_IPI = 350; // 低于这个死翘翘
+        const START_IPI = 500;
+        const IPI_PENALTY = 50; // 掉一个球扣50分
+
+        let gameState = {
+            score: 0,
+            ipi: START_IPI,
+            level: 1
+        };
+
+        // 对象属性
+        const ball = {
+            x: 0, y: 0,
+            dx: 0, dy: 0,
+            radius: 6,
+            speed: 5,
+            color: '#232F3E' // Amazon Blue
+        };
+
+        const paddle = {
+            x: 0, y: 0,
+            width: 100, height: 16,
+            color: '#FF9900', // Amazon Orange
+            text: '50% OFF'
+        };
+
+        let bricks = [];
+        const brickConfig = {
+            rowCount: 5,
+            colCount: 5, // 会根据宽度动态计算
+            padding: 8,
+            offsetTop: 40,
+            offsetLeft: 20,
+            height: 20
+        };
+
+        // --- 初始化与响应式 ---
+        function resizeGame() {
+            // 获取 HUD 的实际高度
+            const hudHeight = hud.offsetHeight;
+
+            // 获取父容器宽度，最大不超过 600
+            const maxWidth = Math.min(window.innerWidth, 600);
+            // 动态计算最大高度：窗口高度 - HUD 高度
+            const maxHeight = window.innerHeight - hudHeight; 
+            
+            // 设置显示尺寸
+            canvas.style.width = maxWidth + "px";
+            canvas.style.height = maxHeight + "px";
+            
+            // 设置渲染尺寸
+            canvas.width = maxWidth * dpr;
+            canvas.height = maxHeight * dpr;
+            ctx.scale(dpr, dpr);
+
+            // 重置挡板位置
+            paddle.y = (canvas.height / dpr) - 40;
+            paddle.x = ((canvas.width / dpr) - paddle.width) / 2;
+
+            // 动态计算砖块列数
+            const availableWidth = (canvas.width / dpr) - (2 * brickConfig.offsetLeft);
+            // 假设每个砖块大约 60px 宽
+            brickConfig.colCount = Math.floor(availableWidth / 65);
+            // 计算自适应宽度
+            brickConfig.width = (availableWidth - (brickConfig.colCount - 1) * brickConfig.padding) / brickConfig.colCount;
+
+            // 无论是否运行中，都要初始化背景，否则弹窗后面是白的
+            if (!isRunning) {
+                // 初始化一套静态数据用于展示背景
+                initBricks();
+                // 绘制一帧静态画面
+                ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+                drawBricks();
+                // 把挡板画在中间
+                paddle.x = ((canvas.width / dpr) - paddle.width) / 2;
+                drawPaddle();
+            }
+        }
+
+        window.addEventListener('resize', resizeGame);
+
+        // --- 游戏逻辑 ---
+
+        function initBricks() {
+            bricks = [];
+            for (let c = 0; c < brickConfig.colCount; c++) {
+                bricks[c] = [];
+                for (let r = 0; r < brickConfig.rowCount; r++) {
+                    // 定义砖块类型
+                    let type = 'normal'; // 📦
+                    let health = 1;
+                    let color = '#4ade80'; // Green (Safe)
+                    let scoreValue = 10;
+                    
+                    if (r === 0) { // 顶部最危险
+                        type = 'unsellable'; // 🟥
+                        health = 2; // 硬骨头
+                        color = '#ef4444'; // Red
+                        scoreValue = 50;
+                    } else if (r === 1 || r === 2) {
+                        type = 'longterm'; // 🟨
+                        health = 1;
+                        color = '#eab308'; // Yellow
+                        scoreValue = 30;
+                    }
+
+                    bricks[c][r] = { 
+                        x: 0, y: 0, 
+                        status: 1, 
+                        type: type, 
+                        health: health,
+                        color: color,
+                        maxHealth: health,
+                        scoreValue: scoreValue
+                    };
+                }
+            }
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.add('hidden');
+            document.getElementById('touch-hint').classList.remove('hidden');
+            
+            // 3秒后隐藏提示
+            setTimeout(() => document.getElementById('touch-hint').classList.add('hidden'), 3000);
+
+            // 重置状态
+            gameState.score = 0;
+            gameState.ipi = START_IPI;
+            
+            resizeGame(); // 确保尺寸正确
+            initBricks();
+            resetBall();
+            updateUI();
+
+            isRunning = true;
+            draw();
+        }
+
+        function resetBall() {
+            ball.x = (canvas.width / dpr) / 2;
+            ball.y = (canvas.height / dpr) - 60;
+            ball.dx = 4 * (Math.random() > 0.5 ? 1 : -1); // 随机左右
+            ball.dy = -4; // 向上发射
+        }
+
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = ball.color;
+            ctx.fill();
+            // 流量光晕
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "rgba(35, 47, 62, 0.5)";
+            ctx.closePath();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawPaddle() {
+            // 绘制优惠券形状
+            ctx.fillStyle = paddle.color;
+            
+            // 圆角矩形
+            const r = 4;
+            ctx.beginPath();
+            ctx.moveTo(paddle.x + r, paddle.y);
+            ctx.lineTo(paddle.x + paddle.width - r, paddle.y);
+            ctx.quadraticCurveTo(paddle.x + paddle.width, paddle.y, paddle.x + paddle.width, paddle.y + r);
+            ctx.lineTo(paddle.x + paddle.width, paddle.y + paddle.height - r);
+            ctx.quadraticCurveTo(paddle.x + paddle.width, paddle.y + paddle.height, paddle.x + paddle.width - r, paddle.y + paddle.height);
+            ctx.lineTo(paddle.x + r, paddle.y + paddle.height);
+            ctx.quadraticCurveTo(paddle.x, paddle.y + paddle.height, paddle.x, paddle.y + paddle.height - r);
+            ctx.lineTo(paddle.x, paddle.y + r);
+            ctx.quadraticCurveTo(paddle.x, paddle.y, paddle.x + r, paddle.y);
+            ctx.closePath();
+            ctx.fill();
+
+            // 虚线装饰 (像优惠券的撕口)
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(paddle.x + 4, paddle.y + 2);
+            ctx.lineTo(paddle.x + paddle.width - 4, paddle.y + 2);
+            ctx.stroke();
+            ctx.setLineDash([]); // 还原
+
+            // 文字
+            ctx.fillStyle = '#111';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(paddle.text, paddle.x + paddle.width / 2, paddle.y + paddle.height / 2 + 1);
+        }
+
+        function drawBricks() {
+            for (let c = 0; c < brickConfig.colCount; c++) {
+                for (let r = 0; r < brickConfig.rowCount; r++) {
+                    const b = bricks[c][r];
+                    if (b.status === 1) {
+                        const brickX = (c * (brickConfig.width + brickConfig.padding)) + brickConfig.offsetLeft;
+                        const brickY = (r * (brickConfig.height + brickConfig.padding)) + brickConfig.offsetTop;
+                        b.x = brickX;
+                        b.y = brickY;
+
+                        ctx.beginPath();
+                        ctx.rect(brickX, brickY, brickConfig.width, brickConfig.height);
+                        
+                        // 颜色根据剩余血量稍微变暗/亮
+                        ctx.fillStyle = b.color;
+                        if (b.maxHealth > 1 && b.health === 1) {
+                             ctx.fillStyle = '#f87171'; // 红色变浅一点，表示快碎了
+                        }
+                        
+                        ctx.fill();
+                        ctx.closePath();
+
+                        // 绘制箱子纹理/文字
+                        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                        ctx.font = '12px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        let icon = '';
+                        if (b.type === 'unsellable') icon = '🚫';
+                        else if (b.type === 'longterm') icon = '💰';
+                        // 只有宽度足够才画图标
+                        if (brickConfig.width > 30) {
+                             ctx.fillText(icon, brickX + brickConfig.width/2, brickY + brickConfig.height/2);
+                        }
+                    }
+                }
+            }
+        }
+
+        function collisionDetection() {
+            for (let c = 0; c < brickConfig.colCount; c++) {
+                for (let r = 0; r < brickConfig.rowCount; r++) {
+                    const b = bricks[c][r];
+                    if (b.status === 1) {
+                        if (ball.x > b.x && ball.x < b.x + brickConfig.width && ball.y > b.y && ball.y < b.y + brickConfig.height) {
+                            ball.dy = -ball.dy;
+                            
+                            // 扣血
+                            b.health--;
+                            
+                            // 特效
+                            createFloatingText(b.x + brickConfig.width/2, b.y, `-$${b.scoreValue}`);
+
+                            if (b.health <= 0) {
+                                b.status = 0;
+                                gameState.score += b.scoreValue;
+                                // 清理库存有助于 IPI
+                                gameState.ipi = Math.min(MAX_IPI, gameState.ipi + 2); 
+                            } else {
+                                // 撞击但未碎，给一点点反馈
+                                gameState.score += 5;
+                            }
+                            updateUI();
+                            checkWin();
+                        }
+                    }
+                }
+            }
+        }
+
+        function checkWin() {
+            // 检查是否所有砖块都清除了
+            let activeBricks = 0;
+            for (let c = 0; c < brickConfig.colCount; c++) {
+                for (let r = 0; r < brickConfig.rowCount; r++) {
+                    if (bricks[c][r].status === 1) activeBricks++;
+                }
+            }
+            if (activeBricks === 0) {
+                gameOver(true);
+            }
+        }
+
+        function update() {
+            // 移动球
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // 墙壁碰撞
+            // 左/右
+            if (ball.x + ball.radius > canvas.width / dpr || ball.x - ball.radius < 0) {
+                ball.dx = -ball.dx;
+            }
+            // 顶
+            if (ball.y - ball.radius < 0) {
+                ball.dy = -ball.dy;
+            }
+            // 底 (Lose Logic)
+            else if (ball.y + ball.radius > canvas.height / dpr) {
+                // 流量流失，扣 IPI
+                gameState.ipi -= IPI_PENALTY;
+                createFloatingText(ball.x, canvas.height/dpr - 50, "-50 IPI", "red");
+                updateUI();
+
+                if (gameState.ipi < MIN_IPI) {
+                    gameOver(false);
+                } else {
+                    resetBall();
+                }
+            }
+
+            // 挡板碰撞
+            if (ball.y + ball.radius >= paddle.y && 
+                ball.y - ball.radius <= paddle.y + paddle.height &&
+                ball.x >= paddle.x && 
+                ball.x <= paddle.x + paddle.width) {
+                
+                // 确保只有向下落时才反弹
+                if (ball.dy > 0) {
+                    ball.dy = -ball.dy;
+                    
+                    // 根据击打位置改变 X 速度
+                    const hitPoint = ball.x - (paddle.x + paddle.width / 2);
+                    ball.dx = hitPoint * 0.15; 
+                    
+                    ball.speed = Math.min(ball.speed * 1.02, 8);
+                }
+            }
+        }
+
+        function draw() {
+            if (!isRunning) return;
+
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+            drawBricks();
+            drawBall();
+            drawPaddle();
+            collisionDetection();
+            update();
+
+            animationId = requestAnimationFrame(draw);
+        }
+
+        function gameOver(win) {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            
+            const screen = document.getElementById('game-over-screen');
+            const title = document.getElementById('result-title');
+            const desc = document.getElementById('result-desc');
+            const icon = document.getElementById('result-icon');
+            
+            screen.classList.remove('hidden');
+            
+            document.getElementById('final-ipi').innerText = gameState.ipi;
+            document.getElementById('final-ipi').className = gameState.ipi < MIN_IPI ? "text-2xl font-bold text-red-500" : "text-2xl font-bold text-green-400";
+            document.getElementById('final-score').innerText = "$" + gameState.score;
+
+            if (win) {
+                title.innerText = "库存清空！";
+                title.className = "text-2xl font-bold mb-2 text-green-400";
+                desc.innerText = "干得漂亮！这波 Outlet Deal 效果拔群，IPI 分数保住了！";
+                icon.className = "fas fa-trophy text-6xl text-yellow-400 mb-4 animate-bounce";
+            } else {
+                title.innerText = "限制发货！";
+                title.className = "text-2xl font-bold mb-2 text-red-500";
+                desc.innerText = "流量没接住，IPI 分数跌破红线，明年再战吧。";
+                icon.className = "fas fa-ban text-6xl text-red-500 mb-4 animate-pulse";
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('score-display').innerText = gameState.score;
+            document.getElementById('ipi-value').innerText = gameState.ipi;
+            
+            // IPI 颜色变化
+            const ipiEl = document.getElementById('ipi-value');
+            if (gameState.ipi < 400) ipiEl.className = "font-bold text-red-500 animate-pulse";
+            else if (gameState.ipi < 500) ipiEl.className = "font-bold text-yellow-400";
+            else ipiEl.className = "font-bold text-green-400";
+
+            // 进度条
+            const pct = Math.max(0, Math.min(100, (gameState.ipi / MAX_IPI) * 100));
+            document.getElementById('ipi-bar').style.width = pct + "%";
+        }
+
+        // --- 输入控制 ---
+
+        function movePaddle(clientX) {
+            const rect = canvas.getBoundingClientRect();
+            const relativeX = clientX - rect.left;
+            
+            const scaleX = (canvas.width / dpr) / rect.width;
+            const canvasX = relativeX * scaleX;
+
+            paddle.x = canvasX - paddle.width / 2;
+
+            // 边界检查
+            if (paddle.x < 0) paddle.x = 0;
+            if (paddle.x + paddle.width > canvas.width / dpr) paddle.x = (canvas.width / dpr) - paddle.width;
+        }
+
+        // 鼠标
+        document.addEventListener("mousemove", (e) => {
+            if (isRunning) movePaddle(e.clientX);
+        });
+
+        // 触摸
+        canvas.addEventListener("touchmove", (e) => {
+            if (isRunning) {
+                e.preventDefault();
+                movePaddle(e.touches[0].clientX);
+            }
+        }, { passive: false });
+        
+        canvas.addEventListener("touchstart", (e) => {
+             if (isRunning) {
+                e.preventDefault();
+                movePaddle(e.touches[0].clientX);
+            }
+        }, { passive: false });
+
+        // --- 特效辅助 ---
+        function createFloatingText(x, y, text, color = "#22c55e") {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.innerText = text;
+            el.style.color = color;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = rect.width / (canvas.width / dpr);
+            const scaleY = rect.height / (canvas.height / dpr);
+            
+            const screenX = rect.left + (x * scaleX);
+            const screenY = rect.top + (y * scaleY);
+
+            el.style.left = screenX + 'px';
+            el.style.top = screenY + 'px';
+            
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 800);
+        }
+
+        // 初始调用一次
+        resizeGame();
+
+    </script>
+</body>
+</html>

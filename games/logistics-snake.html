@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FBA 补货惊魂 - The Logistics Chain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #232F3E; /* Amazon Dark Blue */
+            color: white;
+            overflow: hidden; /* Prevent scrolling */
+            touch-action: none; /* Prevent default touch actions */
+        }
+
+        #game-board {
+            background-color: #f3f3f3;
+            border: 4px solid #FF9900; /* Amazon Orange */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            image-rendering: pixelated;
+        }
+
+        .btn-control {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.1s;
+            backdrop-filter: blur(4px);
+        }
+
+        .btn-control:active {
+            background-color: #FF9900;
+            border-color: #FF9900;
+            transform: scale(0.9);
+        }
+
+        /* Modal Overlay */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            backdrop-filter: blur(5px);
+        }
+
+        .hidden { display: none !important; }
+
+        .score-box {
+            background: #37475A;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border-left: 4px solid #FF9900;
+        }
+        
+        /* 闪烁的提示文字 */
+        .blink-text {
+            animation: blinker 1.5s linear infinite;
+        }
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-between py-4">
+
+    <!-- Header / Score -->
+    <div class="w-full max-w-md px-4 flex justify-between items-center z-10">
+        <div>
+            <h1 class="font-bold text-xl italic"><i class="fas fa-shipping-fast text-orange-500 mr-2"></i>FBA 补货惊魂</h1>
+            <p class="text-xs text-gray-400">Logistics Snake v1.2</p>
+        </div>
+        <div class="score-box text-right">
+            <div class="text-xs text-gray-400">FBA 库存 (件)</div>
+            <div class="text-2xl font-bold font-mono text-orange-400" id="score">0</div>
+        </div>
+    </div>
+
+    <!-- Game Canvas Container -->
+    <div class="relative flex-1 flex items-center justify-center w-full p-4">
+        <canvas id="game-board" width="400" height="400" class="max-w-full max-h-full rounded-lg"></canvas>
+        <!-- 等待开始的提示层 -->
+        <div id="start-hint" class="absolute pointer-events-none hidden">
+            <p class="text-gray-500 font-bold bg-white/80 px-4 py-2 rounded-full shadow-lg blink-text">
+                <i class="fas fa-arrow-up"></i> 按方向键发货
+            </p>
+        </div>
+    </div>
+
+    <!-- Mobile Controls (D-Pad) -->
+    <div class="w-full max-w-xs grid grid-cols-3 gap-2 px-6 pb-8 z-10 md:hidden">
+        <div></div>
+        <div class="flex justify-center"><button class="btn-control" id="btn-up"><i class="fas fa-chevron-up"></i></button></div>
+        <div></div>
+        
+        <div class="flex justify-center"><button class="btn-control" id="btn-left"><i class="fas fa-chevron-left"></i></button></div>
+        <div class="flex justify-center"><button class="btn-control bg-orange-600 border-orange-500" onclick="togglePause()"><i class="fas fa-pause text-sm"></i></button></div>
+        <div class="flex justify-center"><button class="btn-control" id="btn-right"><i class="fas fa-chevron-right"></i></button></div>
+        
+        <div></div>
+        <div class="flex justify-center"><button class="btn-control" id="btn-down"><i class="fas fa-chevron-down"></i></button></div>
+        <div></div>
+    </div>
+
+    <!-- Desktop Hint -->
+    <div class="hidden md:block text-gray-400 text-sm pb-4">
+        使用键盘方向键 <i class="fas fa-arrows-alt"></i> 控制货车移动
+    </div>
+
+    <!-- Start/Game Over Screen -->
+    <div id="start-screen" class="modal">
+        <i class="fas fa-truck-loading text-6xl text-orange-500 mb-4 animate-bounce"></i>
+        <h2 class="text-3xl font-bold mb-2">准备发货？</h2>
+        <p class="text-gray-400 mb-8 text-center px-6">吃掉箱子增加库存<br>不要撞墙(海关)或撞自己(资金链)</p>
+        <button onclick="startGame()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:scale-105 active:scale-95 text-xl">
+            开始补货 (Start)
+        </button>
+    </div>
+
+    <div id="game-over-screen" class="modal hidden">
+        <div id="death-icon" class="text-6xl text-red-500 mb-4">
+            <i class="fas fa-file-invoice-dollar"></i>
+        </div>
+        <h2 class="text-3xl font-bold mb-2 text-red-500" id="death-title">资金链断裂!</h2>
+        <p class="text-gray-300 mb-6 text-center px-6" id="death-reason">你撞到了自己，导致现金流崩溃。</p>
+        
+        <div class="bg-gray-800 p-4 rounded-lg mb-8 text-center border border-gray-600 w-64">
+            <p class="text-xs text-gray-400 uppercase tracking-widest">最终库存</p>
+            <p class="text-4xl font-bold text-white mt-1" id="final-score">0</p>
+        </div>
+
+        <button onclick="startGame()" class="bg-white text-gray-900 hover:bg-gray-200 font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:scale-105 active:scale-95">
+            重新发货 (Restart)
+        </button>
+    </div>
+
+    <script>
+        // --- 游戏配置 ---
+        const canvas = document.getElementById('game-board');
+        const ctx = canvas.getContext('2d');
+        
+        const dpr = window.devicePixelRatio || 1;
+        const tileCount = 20; 
+        let tileSize = 20;
+
+        let speed = 7;
+        let score = 0;
+        
+        let headX = 10;
+        let headY = 10;
+        let xVelocity = 0;
+        let yVelocity = 0;
+
+        let appleX = 5;
+        let appleY = 5;
+
+        const snakeParts = [];
+        let tailLength = 2;
+
+        // 核心优化：输入缓冲队列
+        let inputQueue = [];
+
+        let gameInterval;
+        let isRunning = false;
+        let isPaused = false;
+
+        // --- 初始化 & 响应式布局 ---
+        function resizeGame() {
+            const maxWidth = Math.min(window.innerWidth - 32, 600);
+            const maxHeight = window.innerHeight - 250;
+            const size = Math.min(maxWidth, maxHeight);
+            
+            canvas.style.width = size + "px";
+            canvas.style.height = size + "px";
+            
+            canvas.width = size * dpr;
+            canvas.height = size * dpr;
+            ctx.scale(dpr, dpr);
+            
+            tileSize = size / tileCount;
+            
+            if (!isRunning && !isPaused) {
+                drawGame();
+            }
+        }
+
+        window.addEventListener('resize', resizeGame);
+        resizeGame();
+
+        // --- 游戏循环 ---
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.add('hidden');
+            
+            // 重置状态
+            headX = 10; headY = 10;
+            snakeParts.length = 0;
+            tailLength = 2;
+            score = 0;
+            xVelocity = 0; yVelocity = 0;
+            inputQueue = []; // 清空输入队列
+            speed = 5; 
+            
+            updateScore();
+            placeApple();
+            
+            isRunning = true;
+            isPaused = false;
+            
+            document.getElementById('start-hint').classList.remove('hidden');
+
+            if (gameInterval) clearTimeout(gameInterval);
+            drawGame();
+        }
+
+        function drawGame() {
+            if (!isRunning) return;
+
+            // 1. 处理输入队列 (核心修复)
+            // 每一帧如果队列里有指令，就拿出一个来执行
+            if (inputQueue.length > 0) {
+                let nextMove = inputQueue.shift();
+                xVelocity = nextMove.x;
+                yVelocity = nextMove.y;
+            }
+
+            let currentSpeed = 5 + Math.floor(score / 5);
+            if (currentSpeed > 15) currentSpeed = 15;
+
+            const isMoving = xVelocity !== 0 || yVelocity !== 0;
+
+            if (isMoving) {
+                 document.getElementById('start-hint').classList.add('hidden');
+            }
+
+            if (!isPaused && isMoving) {
+                changeSnakePosition();
+                let result = checkGameOver();
+                if (result) return;
+            }
+
+            clearScreen();
+            checkAppleCollision();
+            drawApple();
+            drawSnake(isMoving);
+            
+            if (!isPaused) {
+                gameInterval = setTimeout(drawGame, 1000 / currentSpeed);
+            }
+        }
+
+        function clearScreen() {
+            ctx.fillStyle = '#f3f3f3';
+            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= tileCount; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * tileSize, 0);
+                ctx.lineTo(i * tileSize, canvas.height / dpr);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * tileSize);
+                ctx.lineTo(canvas.width / dpr, i * tileSize);
+                ctx.stroke();
+            }
+        }
+
+        function drawSnake(isMoving) {
+            ctx.fillStyle = '#FF9900';
+            ctx.font = `${tileSize * 0.9}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (let i = 0; i < snakeParts.length; i++) {
+                let part = snakeParts[i];
+                ctx.fillText('📦', part.x * tileSize + tileSize/2, part.y * tileSize + tileSize/2 + 2);
+            }
+
+            if (isMoving) {
+                snakeParts.push(new SnakePart(headX, headY));
+                while (snakeParts.length > tailLength) {
+                    snakeParts.shift();
+                }
+            }
+
+            ctx.fillStyle = '#232F3E';
+            ctx.save();
+            let textX = headX * tileSize + tileSize/2;
+            let textY = headY * tileSize + tileSize/2 + 2;
+            
+            if (xVelocity === -1) {
+                ctx.scale(-1, 1);
+                textX = -textX;
+            }
+            
+            ctx.fillText('🚚', textX, textY);
+            ctx.restore();
+        }
+
+        function drawApple() {
+            ctx.font = `${tileSize}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            let bounce = Math.sin(Date.now() / 200) * 2;
+            ctx.fillText('📦', appleX * tileSize + tileSize/2, appleY * tileSize + tileSize/2 + bounce);
+            
+            ctx.strokeStyle = 'rgba(255, 153, 0, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(appleX * tileSize + tileSize/2, appleY * tileSize + tileSize/2, tileSize/2 - 2, 0, Math.PI*2);
+            ctx.stroke();
+        }
+
+        function checkAppleCollision() {
+            if (appleX === headX && appleY === headY) {
+                score++;
+                tailLength++;
+                updateScore();
+                placeApple();
+            }
+        }
+
+        function changeSnakePosition() {
+            headX = headX + xVelocity;
+            headY = headY + yVelocity;
+        }
+
+        function placeApple() {
+            let valid = false;
+            while (!valid) {
+                appleX = Math.floor(Math.random() * tileCount);
+                appleY = Math.floor(Math.random() * tileCount);
+                
+                valid = true;
+                if (appleX === headX && appleY === headY) valid = false;
+                for (let part of snakeParts) {
+                    if (part.x === appleX && part.y === appleY) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function checkGameOver() {
+            let gameOver = false;
+            let title = "";
+            let reason = "";
+            let iconClass = "";
+
+            if (headX < 0 || headX === tileCount || headY < 0 || headY === tileCount) {
+                gameOver = true;
+                title = "货物被扣押!";
+                reason = "你的货车撞上了海关查验红线 (边境墙)。";
+                iconClass = "fa-ban";
+            }
+
+            for (let i = 0; i < snakeParts.length; i++) {
+                let part = snakeParts[i];
+                if (part.x === headX && part.y === headY) {
+                    gameOver = true;
+                    title = "资金链断裂!";
+                    reason = "过度扩张导致现金流崩溃 (撞到了自己的尾巴)。";
+                    iconClass = "fa-file-invoice-dollar";
+                    break;
+                }
+            }
+
+            if (gameOver) {
+                isRunning = false;
+                document.getElementById('final-score').innerText = score;
+                document.getElementById('death-title').innerText = title;
+                document.getElementById('death-reason').innerText = reason;
+                document.getElementById('death-icon').innerHTML = `<i class="fas ${iconClass}"></i>`;
+                
+                document.getElementById('game-over-screen').classList.remove('hidden');
+                document.getElementById('start-hint').classList.add('hidden');
+            }
+            return gameOver;
+        }
+
+        function updateScore() {
+            document.getElementById('score').innerText = score;
+        }
+
+        function SnakePart(x, y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        // --- 控制逻辑 (核心修复) ---
+
+        // 新增：输入队列处理函数
+        function queueMove(nx, ny) {
+            // 我们需要对比的是“上一个计划中的移动”，而不是“当前实际移动”
+            // 这样如果你快速输入 [上, 左]，第二个"左"会对比"上"，而不是对比当前的"右"
+            let lastMove = inputQueue.length > 0 ? inputQueue[inputQueue.length - 1] : { x: xVelocity, y: yVelocity };
+            
+            // 如果是静止状态（游戏刚开始），允许任何方向
+            if (lastMove.x === 0 && lastMove.y === 0) {
+                 inputQueue.push({ x: nx, y: ny });
+                 return;
+            }
+
+            // 1. 禁止掉头 (不能直接反向)
+            if (nx !== 0 && lastMove.x === -nx) return;
+            if (ny !== 0 && lastMove.y === -ny) return;
+            
+            // 2. 禁止重复同方向 (可选，为了队列干净)
+            if (nx === lastMove.x && ny === lastMove.y) return;
+
+            // 3. 限制队列长度 (防止按太快 buffer 了未来的十步操作，感觉像延迟)
+            if (inputQueue.length >= 2) return;
+
+            inputQueue.push({ x: nx, y: ny });
+        }
+        
+        document.body.addEventListener('keydown', keyDown);
+
+        function keyDown(event) {
+            if([37, 38, 39, 40, 32].indexOf(event.keyCode) > -1) {
+                event.preventDefault();
+            }
+
+            if (!isRunning && event.keyCode === 32) { 
+                if (!document.getElementById('start-screen').classList.contains('hidden')) startGame();
+                else if (!document.getElementById('game-over-screen').classList.contains('hidden')) startGame();
+                return;
+            }
+
+            if (isRunning) {
+                 // 所有的按键操作现在都走 queueMove
+                 if (event.keyCode == 38 || event.keyCode == 87) queueMove(0, -1); // Up
+                 if (event.keyCode == 40 || event.keyCode == 83) queueMove(0, 1);  // Down
+                 if (event.keyCode == 37 || event.keyCode == 65) queueMove(-1, 0); // Left
+                 if (event.keyCode == 39 || event.keyCode == 68) queueMove(1, 0);  // Right
+                 if (event.keyCode == 80) togglePause();
+            }
+        }
+
+        // 虚拟按钮控制 - 也改为使用 queueMove
+        document.getElementById('btn-up').addEventListener('click', () => { if(isRunning) queueMove(0, -1); });
+        document.getElementById('btn-down').addEventListener('click', () => { if(isRunning) queueMove(0, 1); });
+        document.getElementById('btn-left').addEventListener('click', () => { if(isRunning) queueMove(-1, 0); });
+        document.getElementById('btn-right').addEventListener('click', () => { if(isRunning) queueMove(1, 0); });
+
+        // 触摸滑动控制
+        let touchStartX = 0;
+        let touchStartY = 0;
+        
+        canvas.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, {passive: false});
+
+        canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault(); 
+        }, {passive: false});
+
+        canvas.addEventListener('touchend', function(e) {
+            if(!isRunning) return;
+            let touchEndX = e.changedTouches[0].screenX;
+            let touchEndY = e.changedTouches[0].screenY;
+            handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+        }, {passive: false});
+
+        function handleSwipe(startX, startY, endX, endY) {
+            let xDiff = endX - startX;
+            let yDiff = endY - startY;
+
+            if (Math.abs(xDiff) > Math.abs(yDiff)) {
+                if (Math.abs(xDiff) > 30) { 
+                    if (xDiff > 0) queueMove(1, 0);
+                    else queueMove(-1, 0);
+                }
+            } else {
+                if (Math.abs(yDiff) > 30) {
+                    if (yDiff > 0) queueMove(0, 1);
+                    else queueMove(0, -1);
+                }
+            }
+        }
+
+        function togglePause() {
+            if (!isRunning) return;
+            isPaused = !isPaused;
+            if (!isPaused) {
+                drawGame();
+            } else {
+                ctx.fillStyle = "rgba(0,0,0,0.5)";
+                ctx.fillRect(0,0,canvas.width/dpr, canvas.height/dpr);
+                ctx.fillStyle = "white";
+                ctx.font = "30px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("暂停盘点中...", canvas.width/dpr/2, canvas.height/dpr/2);
+            }
+        }
+    </script>
+</body>
+</html>

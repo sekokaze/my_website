@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>跟卖连连看 - 赶走跟卖狗</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f3f3;
+            color: #333;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* 3D 翻转效果 */
+        .card-container {
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.4s;
+            transform-style: preserve-3d;
+        }
+
+        .card-container.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* 卡片背面 (Amazon Logo) */
+        .card-front {
+            background-color: #232F3E; /* Amazon Dark Blue */
+            color: white;
+        }
+
+        /* 卡片正面 (内容) */
+        .card-back {
+            background-color: white;
+            color: #333;
+            transform: rotateY(180deg);
+            border: 2px solid transparent;
+        }
+
+        /* 配对成功动画 */
+        .matched .card-back {
+            background-color: #d1fae5; /* Green-100 */
+            border-color: #10b981; /* Green-500 */
+            animation: pulse 0.5s;
+        }
+
+        /* 特殊配对：赶走跟卖 */
+        .matched.special .card-back {
+            background-color: #fee2e2; /* Red-100 */
+            border-color: #ef4444; /* Red-500 */
+            animation: shake 0.5s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: rotateY(180deg) scale(1); }
+            50% { transform: rotateY(180deg) scale(1.1); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: rotateY(180deg) translateX(0); }
+            25% { transform: rotateY(180deg) translateX(-5px); }
+            75% { transform: rotateY(180deg) translateX(5px); }
+        }
+
+        /* 飘字特效 */
+        .floating-text {
+            position: absolute;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            font-size: 1.2rem;
+            text-shadow: 0 2px 4px rgba(255,255,255,0.9);
+            z-index: 50;
+            width: 200px;
+            text-align: center;
+            left: 50%;
+            margin-left: -100px; /* 居中 */
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1.2); }
+        }
+
+        /* 进度条 */
+        .progress-bar {
+            transition: width 1s linear;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- 顶部 HUD -->
+    <div class="bg-gray-800 text-white p-3 shadow-md z-10">
+        <div class="max-w-xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-search text-orange-500"></i>
+                <div>
+                    <h1 class="font-bold text-sm md:text-base leading-tight">跟卖连连看</h1>
+                    <div class="text-[10px] text-gray-400">赶走所有跟卖狗！</div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="text-center">
+                    <div class="text-xs text-gray-400">Combo</div>
+                    <div id="combo-display" class="font-bold text-orange-400 text-lg">0</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-gray-400">剩余时间</div>
+                    <div id="timer" class="font-mono font-bold text-xl w-16 text-right">60</div>
+                </div>
+            </div>
+        </div>
+        <!-- 倒计时进度条 -->
+        <div class="w-full bg-gray-700 h-1 mt-2">
+            <div id="time-bar" class="bg-orange-500 h-1 w-full progress-bar"></div>
+        </div>
+    </div>
+
+    <!-- 游戏区域 -->
+    <div class="flex-1 flex items-center justify-center p-4 bg-gray-100 overflow-hidden">
+        <div id="game-grid" class="grid grid-cols-4 gap-2 md:gap-4 w-full max-w-md aspect-square">
+            <!-- 卡片由 JS 生成 -->
+        </div>
+    </div>
+
+    <!-- 结算/开始弹窗 -->
+    <div id="modal-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50">
+        <div class="bg-white text-gray-800 p-6 rounded-lg max-w-sm w-full shadow-2xl text-center relative overflow-hidden">
+            <!-- 装饰 -->
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 to-yellow-500"></div>
+            
+            <div id="modal-content-start">
+                <i class="fas fa-user-secret text-6xl text-gray-700 mb-4"></i>
+                <h2 class="text-2xl font-bold mb-2">抓住那个跟卖！</h2>
+                <p class="text-gray-500 text-sm mb-6 px-4">
+                    这不是普通的连连看。<br>
+                    你需要找到<span class="text-orange-600 font-bold">运营逻辑</span>的配对。
+                </p>
+                <div class="bg-gray-100 p-3 rounded mb-6 text-left text-xs space-y-2 border border-gray-200">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-center">👹</span> <i class="fas fa-arrow-right text-gray-400"></i> <span class="w-6 text-center">⚖️</span>
+                        <span class="text-gray-600">跟卖 vs 律师函</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-center">📉</span> <i class="fas fa-arrow-right text-gray-400"></i> <span class="w-6 text-center">✈️</span>
+                        <span class="text-gray-600">断货 vs 空派补货</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-center">🐶</span> <i class="fas fa-arrow-right text-gray-400"></i> <span class="w-6 text-center">📁</span>
+                        <span class="text-gray-600">变狗 vs 开Case申诉</span>
+                    </div>
+                </div>
+                <button onclick="startGame()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded shadow-lg transition transform hover:scale-105">
+                    开始排查 (Start)
+                </button>
+            </div>
+
+            <div id="modal-content-end" class="hidden">
+                <i id="end-icon" class="fas fa-trophy text-6xl text-yellow-500 mb-4"></i>
+                <h2 id="end-title" class="text-2xl font-bold mb-2">购物车保住了！</h2>
+                <p id="end-desc" class="text-gray-500 mb-6">你成功赶走了所有跟卖。</p>
+                <div class="text-3xl font-bold text-gray-800 mb-8" id="end-score">耗时: 30s</div>
+                <button onclick="startGame()" class="w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded shadow-lg transition">
+                    再来一局
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部状态栏 -->
+    <div class="bg-white border-t border-gray-200 p-2 text-center text-xs text-gray-400">
+        配对提示：<span class="inline-block w-2 h-2 rounded-full border border-blue-400 bg-blue-50 mr-1 align-middle"></span>相同边框颜色的卡片是一对哦
+    </div>
+
+    <script>
+        // --- 游戏数据 (运营逻辑配对) ---
+        const gamePairs = [
+            {
+                id: 'hijacker',
+                color: 'border-red-400', // 提示色
+                items: [
+                    { icon: 'fa-user-secret', text: '跟卖狗', color: 'text-red-600', isBad: true },
+                    { icon: 'fa-gavel', text: '律师函', color: 'text-blue-600', isAction: true }
+                ],
+                msg: "成功赶走跟卖! ⚖️"
+            },
+            {
+                id: 'stock',
+                color: 'border-orange-400',
+                items: [
+                    { icon: 'fa-chart-line-down', text: '断货了', color: 'text-gray-500', isBad: true },
+                    { icon: 'fa-plane-departure', text: '空派补货', color: 'text-blue-500', isAction: true }
+                ],
+                msg: "库存补上了! 📦"
+            },
+            {
+                id: 'review',
+                color: 'border-gray-400',
+                items: [
+                    { icon: 'fa-star-half-stroke', text: '1星差评', color: 'text-yellow-600', isBad: true },
+                    { icon: 'fa-envelope-open-text', text: '邮件索评', color: 'text-green-600', isAction: true }
+                ],
+                msg: "评分回升了! ⭐"
+            },
+            {
+                id: 'dog',
+                color: 'border-purple-400',
+                items: [
+                    { icon: 'fa-dog', text: '链接变狗', color: 'text-gray-700', isBad: true },
+                    { icon: 'fa-file-signature', text: 'POA申诉', color: 'text-indigo-600', isAction: true }
+                ],
+                msg: "链接救回来了! 🐶"
+            },
+            {
+                id: 'acos',
+                color: 'border-yellow-400',
+                items: [
+                    { icon: 'fa-money-bill-wave', text: 'ACOS 120%', color: 'text-red-500', isBad: true },
+                    { icon: 'fa-ban', text: '否定关键词', color: 'text-gray-600', isAction: true }
+                ],
+                msg: "广告优化成功! 💰"
+            },
+            {
+                id: 'traffic',
+                color: 'border-green-400',
+                items: [
+                    { icon: 'fa-battery-empty', text: '流量下滑', color: 'text-gray-400', isBad: true },
+                    { icon: 'fa-percent', text: 'LD 秒杀', color: 'text-orange-500', isAction: true }
+                ],
+                msg: "爆单开始! 🔥"
+            },
+            { // 增加难度 - 简单的相同配对
+                id: 'prime',
+                color: 'border-blue-300',
+                items: [
+                    { icon: 'fa-check', text: 'Prime', color: 'text-blue-400' },
+                    { icon: 'fa-check', text: 'Prime', color: 'text-blue-400' }
+                ],
+                msg: "Prime 配送!"
+            },
+            { 
+                id: 'cart',
+                color: 'border-yellow-600',
+                items: [
+                    { icon: 'fa-cart-shopping', text: '购物车', color: 'text-yellow-600' },
+                    { icon: 'fa-cart-shopping', text: '购物车', color: 'text-yellow-600' }
+                ],
+                msg: "抢回购物车!"
+            }
+        ];
+
+        let cards = []; // 实际生成的卡片数组
+        let flippedCards = []; // 当前翻开的卡片
+        let matchedPairs = 0;
+        let isLocked = false; // 防止动画时点击
+        let timerInterval;
+        let timeLeft = 60;
+        let combo = 0;
+        let lastMatchTime = 0;
+
+        // --- 游戏逻辑 ---
+
+        function initGameData() {
+            cards = [];
+            // 将配对拆解成单张卡片
+            gamePairs.forEach(pair => {
+                // 卡片1
+                cards.push({
+                    id: pair.id,
+                    icon: pair.items[0].icon,
+                    text: pair.items[0].text,
+                    textColor: pair.items[0].color,
+                    borderColor: pair.color,
+                    msg: pair.msg,
+                    isBad: pair.items[0].isBad || false,
+                    uniqueId: Math.random() // 用于区分同一组的两张卡
+                });
+                // 卡片2
+                cards.push({
+                    id: pair.id,
+                    icon: pair.items[1].icon,
+                    text: pair.items[1].text,
+                    textColor: pair.items[1].color,
+                    borderColor: pair.color,
+                    msg: pair.msg,
+                    isBad: pair.items[1].isBad || false,
+                    uniqueId: Math.random()
+                });
+            });
+
+            // 洗牌 (Fisher-Yates)
+            for (let i = cards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cards[i], cards[j]] = [cards[j], cards[i]];
+            }
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('game-grid');
+            grid.innerHTML = '';
+            
+            cards.forEach((card, index) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card-container';
+                cardEl.dataset.index = index;
+                cardEl.onclick = () => flipCard(cardEl, index);
+
+                cardEl.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-front flex flex-col items-center justify-center">
+                            <div class="text-orange-500 text-2xl mb-1"><i class="fas fa-smile"></i></div>
+                            <div class="text-[10px] text-gray-400 font-bold">Amz</div>
+                        </div>
+                        <div class="card-back border-4 ${card.borderColor}">
+                            <i class="fas ${card.icon} text-3xl ${card.textColor} mb-2"></i>
+                            <div class="text-xs font-bold leading-tight px-1">${card.text}</div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(cardEl);
+            });
+        }
+
+        function flipCard(el, index) {
+            if (isLocked) return;
+            if (el.classList.contains('flipped')) return; // 已经翻开了
+            if (el.classList.contains('matched')) return; // 已经消除了
+
+            el.classList.add('flipped');
+            flippedCards.push({ el, index, data: cards[index] });
+
+            // 检查配对
+            if (flippedCards.length === 2) {
+                isLocked = true;
+                checkForMatch();
+            }
+        }
+
+        function checkForMatch() {
+            const [card1, card2] = flippedCards;
+            const isMatch = card1.data.id === card2.data.id;
+
+            if (isMatch) {
+                handleMatch(card1, card2);
+            } else {
+                unflipCards();
+            }
+        }
+
+        function handleMatch(card1, card2) {
+            matchedPairs++;
+            
+            // 计算 Combo
+            const now = Date.now();
+            if (now - lastMatchTime < 3000) {
+                combo++;
+            } else {
+                combo = 1;
+            }
+            lastMatchTime = now;
+            document.getElementById('combo-display').innerText = combo > 1 ? `x${combo}` : '0';
+            
+            // 播放特效
+            setTimeout(() => {
+                // 特殊标记：如果是跟卖配对，加红色特效
+                const isSpecial = card1.data.id === 'hijacker';
+                
+                card1.el.classList.add('matched');
+                card2.el.classList.add('matched');
+                
+                if (isSpecial) {
+                    card1.el.classList.add('special');
+                    card2.el.classList.add('special');
+                    // 震动效果
+                    if (navigator.vibrate) navigator.vibrate(200);
+                }
+
+                // 飘字
+                showFloatingText(card1.data.msg);
+
+                flippedCards = [];
+                isLocked = false;
+
+                // 检查胜利
+                if (matchedPairs === gamePairs.length) {
+                    setTimeout(endGame, 500);
+                }
+            }, 300);
+        }
+
+        function unflipCards() {
+            setTimeout(() => {
+                flippedCards.forEach(c => c.el.classList.remove('flipped'));
+                flippedCards = [];
+                isLocked = false;
+                // 断 Combo
+                combo = 0;
+                document.getElementById('combo-display').innerText = '0';
+            }, 1000); // 1秒后翻回去
+        }
+
+        function startGame() {
+            document.getElementById('modal-overlay').classList.add('hidden');
+            document.getElementById('modal-content-start').classList.add('hidden');
+            document.getElementById('modal-content-end').classList.add('hidden');
+
+            matchedPairs = 0;
+            combo = 0;
+            timeLeft = 60;
+            isLocked = false;
+            flippedCards = [];
+            document.getElementById('combo-display').innerText = '0';
+            document.getElementById('timer').innerText = timeLeft;
+            document.getElementById('timer').classList.remove('text-red-500');
+            document.getElementById('time-bar').style.width = '100%';
+            document.getElementById('time-bar').classList.remove('bg-red-500');
+            document.getElementById('time-bar').classList.add('bg-orange-500');
+
+            initGameData();
+            renderGrid();
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            document.getElementById('timer').innerText = timeLeft;
+            
+            const pct = (timeLeft / 60) * 100;
+            document.getElementById('time-bar').style.width = `${pct}%`;
+
+            if (timeLeft <= 10) {
+                document.getElementById('timer').classList.add('text-red-500');
+                document.getElementById('time-bar').classList.remove('bg-orange-500');
+                document.getElementById('time-bar').classList.add('bg-red-500');
+            }
+
+            if (timeLeft <= 0) {
+                gameOver(false);
+            }
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            gameOver(true);
+        }
+
+        function gameOver(win) {
+            clearInterval(timerInterval);
+            const overlay = document.getElementById('modal-overlay');
+            const endContent = document.getElementById('modal-content-end');
+            
+            overlay.classList.remove('hidden');
+            endContent.classList.remove('hidden');
+
+            const title = document.getElementById('end-title');
+            const desc = document.getElementById('end-desc');
+            const icon = document.getElementById('end-icon');
+            const score = document.getElementById('end-score');
+
+            if (win) {
+                icon.className = "fas fa-trophy text-6xl text-yellow-500 mb-4 animate-bounce";
+                title.innerText = "购物车保住了！";
+                title.className = "text-2xl font-bold mb-2 text-green-600";
+                desc.innerText = "干得漂亮！所有的运营问题都解决了。";
+                score.innerText = `剩余时间: ${timeLeft}s`;
+            } else {
+                icon.className = "fas fa-skull-crossbones text-6xl text-gray-500 mb-4";
+                title.innerText = "链接变狗了...";
+                title.className = "text-2xl font-bold mb-2 text-red-600";
+                desc.innerText = "处理速度太慢，Listing 被恶搞了。";
+                score.innerText = "失败";
+            }
+        }
+
+        function showFloatingText(text) {
+            const el = document.createElement('div');
+            el.className = 'floating-text text-orange-600 font-bold';
+            el.innerText = text;
+            
+            // 放在屏幕中央上方
+            el.style.top = '40%';
+            
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        // 初始显示弹窗
+        // 不需要做任何事，HTML默认是显示的
+    </script>
+</body>
+</html>
