@@ -371,12 +371,17 @@
             let textX = headX * tileSize + tileSize/2;
             let textY = headY * tileSize + tileSize/2 + 2;
             
-            if (xVelocity === -1) {
-                ctx.scale(-1, 1);
-                textX = -textX;
+            ctx.translate(textX, textY);
+            
+            if (xVelocity === 1) {
+                ctx.rotate(Math.PI);
+            } else if (yVelocity === -1) {
+                ctx.rotate(Math.PI / 2);
+            } else if (yVelocity === 1) {
+                ctx.rotate(-Math.PI / 2);
             }
             
-            ctx.fillText('🚚', textX, textY);
+            ctx.fillText('🚚', 0, 0);
             ctx.restore();
         }
 
