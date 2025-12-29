@@ -562,7 +562,7 @@
             submittingDiv.classList.remove('hidden');
 
             try {
-                const response = await fetch('/api/submit-score', {
+                const response = await fetch('../api/submit-score', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, score })
@@ -571,6 +571,8 @@
                 if (response.ok) {
                     const data = await response.json();
                     console.log('Score submitted:', data);
+                } else {
+                    console.error('Submit failed:', response.status, response.statusText);
                 }
             } catch (error) {
                 console.error('Failed to submit score:', error);
@@ -592,7 +594,7 @@
             listDiv.innerHTML = '';
 
             try {
-                const response = await fetch('/api/leaderboard');
+                const response = await fetch('../api/leaderboard');
                 const data = await response.json();
 
                 if (data.leaderboard && data.leaderboard.length > 0) {
