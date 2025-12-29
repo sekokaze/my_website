@@ -1,8 +1,11 @@
 import { kv } from '@vercel/kv';
 
-export async function GET() {
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const game = searchParams.get('game') || 'snake';
+  
   try {
-    const leaderboardKey = 'snake:leaderboard';
+    const leaderboardKey = `${game}:leaderboard`;
 
     const topScores = await kv.zrange(leaderboardKey, 0, 9, {
       rev: true,
@@ -13,7 +16,7 @@ export async function GET() {
     for (let i = 0; i < topScores.length; i += 2) {
       const userId = topScores[i];
       const score = topScores[i + 1];
-      const userData = await kv.get(`snake:${userId}`);
+      const userData = await kv.get(`${game}:${userId}`);
       leaderboard.push({
         rank: Math.floor(i / 2) + 1,
         userId,
