@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Brainyxia - 智能科技工具平台</title>
     <!-- 引入 Tailwind CSS 进行快速样式构建 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,6 +24,7 @@
             background-color: var(--bg-color);
             color: #ffffff;
             overflow-x: hidden;
+            touch-action: manipulation;
         }
 
         /* 科技感字体 */
@@ -129,6 +130,47 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--primary-glow);
         }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .glass-card:hover {
+                transform: none;
+            }
+            
+            .glass-card:hover::before {
+                left: -100%;
+            }
+            
+            .glass-card:hover {
+                border-color: rgba(255, 255, 255, 0.1);
+                box-shadow: none;
+            }
+            
+            .glass-card:active {
+                transform: scale(0.98);
+            }
+            
+            h1 {
+                font-size: 2.5rem !important;
+            }
+            
+            .gradient-text {
+                font-size: 2.5rem !important;
+            }
+            
+            #particle-canvas {
+                opacity: 0.3;
+            }
+            
+            .neon-btn:hover {
+                color: var(--primary-glow);
+                background: transparent;
+            }
+            
+            .neon-btn:hover::after {
+                width: 0%;
+            }
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -163,10 +205,29 @@
                 </div>
             </div>
         </div>
-        <button class="md:hidden text-white text-2xl" onclick="alert('移动端菜单展开')">
+        <button class="md:hidden text-white text-2xl" onclick="toggleMobileMenu()">
             <i class="fa-solid fa-bars"></i>
         </button>
     </nav>
+
+    <!-- 移动端菜单 -->
+    <div id="mobile-menu" class="fixed inset-0 bg-black/95 backdrop-blur-md z-40 hidden flex-col items-center justify-center gap-8 md:hidden">
+        <button onclick="toggleMobileMenu()" class="absolute top-6 right-6 text-white text-3xl">
+            <i class="fa-solid fa-times"></i>
+        </button>
+        <a href="#" class="text-2xl text-gray-300 hover:text-cyan-400 transition-colors" onclick="toggleMobileMenu()">首页</a>
+        <a href="tools.html" class="text-2xl text-gray-300 hover:text-cyan-400 transition-colors" onclick="toggleMobileMenu()">工具箱</a>
+        <a href="#" class="text-2xl text-gray-300 hover:text-cyan-400 transition-colors" onclick="toggleMobileMenu()">API文档</a>
+        <a href="#" class="text-2xl text-gray-300 hover:text-cyan-400 transition-colors" onclick="toggleMobileMenu()">登录</a>
+        <div class="flex flex-col items-center gap-4 mt-4">
+            <a href="./gift/gift.html" class="text-xl text-pink-400 hover:text-pink-300 transition-colors" onclick="toggleMobileMenu()">
+                <i class="fa-solid fa-gift mr-2"></i>节日礼物
+            </a>
+            <a href="./gift/new-year-2026.html" class="text-xl text-pink-400 hover:text-pink-300 transition-colors" onclick="toggleMobileMenu()">
+                <i class="fa-solid fa-calendar-days mr-2"></i>2026新年
+            </a>
+        </div>
+    </div>
 
     <!-- Hero 区域 -->
     <header class="relative pt-20 pb-32 px-6 text-center z-10 max-w-7xl mx-auto">
@@ -328,6 +389,13 @@
     </div>
 
     <script>
+        // 移动端菜单切换
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+            menu.classList.toggle('flex');
+        }
+
         // 模拟页面跳转逻辑
         function navigateTo(toolId) {
             const toast = document.getElementById('toast');

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CYBER-XMAS // SYSTEM ONLINE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -19,7 +19,6 @@
         body {
             font-family: 'Share Tech Mono', monospace;
             background-color: var(--dark-bg);
-            /* 科技感网格背景 */
             background-image: 
                 linear-gradient(var(--grid-color) 1px, transparent 1px),
                 linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
@@ -29,6 +28,7 @@
             overflow: hidden;
             height: 100vh;
             margin: 0;
+            touch-action: manipulation;
         }
 
         /* --- 故障文字效果 --- */
@@ -299,6 +299,103 @@
         @keyframes glitch-anim2 {
             0% { clip: rect(65px, 9999px, 80px, 0); }
             100% { clip: rect(12px, 9999px, 32px, 0); }
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            body {
+                overflow-y: auto;
+                height: auto;
+                min-height: 100vh;
+            }
+
+            .tree-container {
+                width: 200px;
+                height: 280px;
+            }
+
+            .layer-1 {
+                border-left-width: 40px;
+                border-right-width: 40px;
+                border-bottom-width: 55px;
+            }
+
+            .layer-2 {
+                border-left-width: 60px;
+                border-right-width: 60px;
+                border-bottom-width: 70px;
+            }
+
+            .layer-3 {
+                border-left-width: 80px;
+                border-right-width: 80px;
+                border-bottom-width: 85px;
+            }
+
+            .star {
+                border-left-width: 10px;
+                border-right-width: 10px;
+                border-bottom-width: 25px;
+            }
+
+            .star::after {
+                border-left-width: 10px;
+                border-right-width: 10px;
+                border-top-width: 25px;
+                top: 8px;
+                left: -10px;
+            }
+
+            .trunk {
+                width: 20px;
+                height: 30px;
+            }
+
+            .data-cube {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+
+            .data-cube:hover {
+                transform: translateY(-3px);
+            }
+
+            .data-cube:active {
+                transform: scale(0.95);
+            }
+
+            .home-btn {
+                top: 10px;
+                left: 10px;
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+
+            h1 {
+                font-size: 1.8rem !important;
+            }
+
+            .glitch-title {
+                font-size: 1.8rem;
+            }
+
+            header {
+                margin-bottom: 20px;
+            }
+
+            .tree-wrapper {
+                margin-bottom: 30px;
+            }
+
+            .hud-modal {
+                max-width: 90vw;
+                margin: 10px;
+            }
+
+            #matrixCanvas {
+                opacity: 0.3;
+            }
         }
     </style>
 </head>

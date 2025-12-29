@@ -2,13 +2,13 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>亚马逊美国站 FBA 配送费计算器 (2025-2026修正版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; touch-action: manipulation; }
         .input-group-label { font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.25rem; display: block; }
         .result-card { transition: all 0.3s ease; }
         .result-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
@@ -22,6 +22,33 @@
         .badge-compare { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-left: 5px; }
         .badge-prev { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
         .badge-next { background-color: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+
+        @media (max-width: 768px) {
+            .result-card:hover {
+                transform: none;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            }
+
+            .result-card:active {
+                transform: scale(0.98);
+            }
+
+            h1 {
+                font-size: 1.2rem !important;
+            }
+
+            .tab-active, .tab-inactive {
+                font-size: 0.9rem;
+            }
+
+            .input-group-label {
+                font-size: 0.8rem;
+            }
+
+            input, select {
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">

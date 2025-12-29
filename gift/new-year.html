@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NEON 2026 | 跨年倒计时</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -23,9 +23,10 @@
             background-color: var(--bg-dark);
             font-family: 'Orbitron', 'Noto Sans SC', sans-serif;
             color: white;
-            overflow: hidden; /* 防止弹幕导致滚动条 */
+            overflow: hidden;
             margin: 0;
             padding: 0;
+            touch-action: manipulation;
         }
 
         /* 背景网格动画 */
@@ -214,6 +215,81 @@
             0% { opacity: 0.4; }
             50% { opacity: 1; }
             100% { opacity: 0.4; }
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            body {
+                overflow-y: auto;
+                min-height: 100vh;
+            }
+
+            .cyber-grid {
+                opacity: 0.3;
+            }
+
+            .danmaku-container {
+                height: 30vh;
+            }
+
+            .danmaku-item {
+                font-size: 14px;
+            }
+
+            #fireworks {
+                opacity: 0.4;
+            }
+
+            .timer-box:hover {
+                transform: none;
+                border-color: var(--neon-cyan);
+                box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+            }
+
+            .timer-box:active {
+                transform: scale(0.98);
+            }
+
+            h1 {
+                font-size: 2.5rem !important;
+            }
+
+            .neon-text-cyan {
+                text-shadow: 0 0 3px var(--neon-cyan), 0 0 6px var(--neon-cyan);
+            }
+
+            .neon-text-pink {
+                text-shadow: 0 0 3px var(--neon-pink), 0 0 6px var(--neon-pink);
+            }
+
+            .cyber-btn:hover {
+                background: var(--neon-pink);
+                transform: none;
+                box-shadow: none;
+            }
+
+            .cyber-btn:active {
+                transform: scale(0.95);
+            }
+
+            .cyber-input:focus {
+                box-shadow: 0 0 8px var(--neon-cyan);
+            }
+
+            .live-badge {
+                font-size: 0.7rem;
+                padding: 2px 6px;
+            }
+
+            .live-dot {
+                width: 6px;
+                height: 6px;
+            }
+
+            .glitch-wrapper::before,
+            .glitch-wrapper::after {
+                display: none;
+            }
         }
     </style>
 </head>
