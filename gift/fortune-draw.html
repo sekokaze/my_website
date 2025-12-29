@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>新年抽签 | 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --festive-red: #e60012;
+            --festive-gold: #ffac33;
+            --text-dark: #333333;
+            --bg-warm: #fdfbf7;
+        }
+
+        body {
+            background-color: var(--bg-warm);
+            background-image: radial-gradient(#e60012 0.5px, transparent 0.5px), radial-gradient(#e60012 0.5px, var(--bg-warm) 0.5px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            background-attachment: fixed;
+            font-family: 'Noto Sans SC', sans-serif;
+            color: var(--text-dark);
+            overflow-y: auto;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .festive-btn {
+            background: var(--festive-red);
+            color: white;
+            border: none;
+            border-radius: 9999px;
+            font-weight: 700;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(230, 0, 18, 0.3);
+        }
+        .festive-btn:hover {
+            background: #c4000f;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px -1px rgba(230, 0, 18, 0.4);
+        }
+        .festive-btn:active {
+            transform: translateY(1px);
+        }
+
+        .outline-btn {
+            background: transparent;
+            border: 2px solid var(--festive-red);
+            color: var(--festive-red);
+            border-radius: 9999px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+        .outline-btn:hover {
+            background: #fff0f0;
+        }
+
+        .fortune-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            border-bottom: 4px solid var(--festive-red);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .fortune-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .badge-excellent {
+            background: linear-gradient(135deg, #ffac33, #ff8c00);
+            color: white;
+        }
+
+        .badge-good {
+            background: linear-gradient(135deg, #e60012, #ff4d4d);
+            color: white;
+        }
+
+        .badge-medium {
+            background: linear-gradient(135deg, #6b7280, #9ca3af);
+            color: white;
+        }
+
+        .fortune-poem {
+            background: linear-gradient(135deg, #fff9f0, #fffbf5);
+            border-left: 4px solid var(--festive-gold);
+            padding: 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            line-height: 2;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .fortune-section {
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+        }
+
+        .fortune-section:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+
+        .section-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .section-content {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #444;
+        }
+
+        .shake-animation {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fortune-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .fortune-card {
+                border-radius: 12px;
+            }
+
+            .fortune-poem {
+                padding: 16px;
+                font-size: 14px;
+            }
+
+            .section-content {
+                font-size: 14px;
+            }
+
+            .festive-btn:hover {
+                background: var(--festive-red);
+                transform: none;
+            }
+
+            .festive-btn:active {
+                transform: scale(0.95);
+            }
+
+            .outline-btn:hover {
+                background: transparent;
+            }
+
+            .outline-btn:active {
+                background: #fff0f0;
+            }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+    
+    <main class="w-full max-w-lg">
+        
+        <div class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-black text-[#e60012] mb-2">
+                新年抽签
+            </h1>
+            <p class="text-gray-500 text-sm">抽取你的2026新年运势</p>
+        </div>
+
+        <div id="draw-area" class="text-center py-12">
+            <div class="fortune-icon mb-4">🎋</div>
+            <button onclick="drawFortune()" class="festive-btn px-8 py-4 text-lg shadow-lg shadow-red-200">
+                <i class="fas fa-hand-pointer mr-2"></i>点击抽签
+            </button>
+        </div>
+
+        <div id="fortune-result" class="hidden fade-in">
+            <div class="fortune-card p-6">
+                <div class="text-center mb-6">
+                    <div id="fortune-badge" class="fortune-badge mb-4"></div>
+                    <div id="fortune-name" class="text-2xl font-bold text-[#e60012]"></div>
+                </div>
+
+                <div class="fortune-section">
+                    <div class="section-label">签诗</div>
+                    <div id="fortune-poem" class="fortune-poem"></div>
+                </div>
+
+                <div class="fortune-section">
+                    <div class="section-label">解曰</div>
+                    <div id="fortune-summary" class="section-content"></div>
+                </div>
+
+                <div class="fortune-section">
+                    <div class="section-label">解析</div>
+                    <div id="fortune-detail" class="section-content"></div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 justify-center mt-6">
+                <button onclick="drawFortune()" class="festive-btn px-6 py-3">
+                    <i class="fas fa-redo mr-2"></i>再抽一次
+                </button>
+                <button onclick="closeFortune()" class="outline-btn px-6 py-3">
+                    <i class="fas fa-times mr-2"></i>关闭
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const fortunes = [
+            {
+                name: "上上签",
+                badgeClass: "badge-excellent",
+                poem: "春风得意马蹄疾，一日看尽长安花。\n前程似锦福星照，万事顺遂乐无涯。",
+                summary: "大吉大利，诸事顺遂，前程似锦。",
+                detail: "此签预示着2026年将是你事业、财运、感情全面丰收的一年。工作上会有重大突破，财运亨通，贵人相助。感情方面，单身者有望遇到良缘，有伴侣者感情更上一层楼。健康方面，精力充沛，宜积极进取。"
+            },
+            {
+                name: "上上签",
+                badgeClass: "badge-excellent",
+                poem: "金榜题名时，洞房花烛夜。\n双喜临门福满堂，前程似锦乐无疆。",
+                summary: "双喜临门，事业爱情双丰收。",
+                detail: "此签预示着你在2026年将迎来事业和感情的双重成功。事业上可能获得晋升、加薪或创业成功；感情上，有望步入婚姻殿堂或遇到真爱。家庭和睦，财源广进，是难得的好签。"
+            },
+            {
+                name: "上签",
+                badgeClass: "badge-good",
+                poem: "时来运转福星照，财源广进乐逍遥。\n贵人相助前程好，心想事成步步高。",
+                summary: "运势上升，贵人相助，心想事成。",
+                detail: "此签预示着你的运势正在上升，2026年将得到贵人的帮助和支持。事业上稳步前进，财运逐渐好转。建议抓住机遇，积极行动，不要犹豫。人际关系方面，多结交良师益友，对你的发展大有裨益。"
+            },
+            {
+                name: "上签",
+                badgeClass: "badge-good",
+                poem: "春风送暖入屠苏，万象更新展宏图。\n吉星高照福满门，平安喜乐度春秋。",
+                summary: "万象更新，吉星高照，平安喜乐。",
+                detail: "此签预示着2026年将是一个充满希望和机遇的年份。新的开始，新的机遇，适合制定新计划、开启新项目。健康方面，注意劳逸结合，保持良好作息。家庭和睦，亲友关系融洽。"
+            },
+            {
+                name: "中签",
+                badgeClass: "badge-medium",
+                poem: "平平淡淡才是真，稳扎稳打度光阴。\n守得云开见月明，苦尽甘来福满门。",
+                summary: "稳中求进，耐心等待，苦尽甘来。",
+                detail: "此签预示着2026年需要保持耐心和毅力。虽然不会一帆风顺，但只要稳扎稳打，终将迎来转机。事业上不宜冒险，宜守成待变。感情上需要多沟通，多理解。财运平稳，不宜大额投资。"
+            },
+            {
+                name: "中签",
+                badgeClass: "badge-medium",
+                poem: "山重水复疑无路，柳暗花明又一村。\n时来运转福星照，守得云开见月明。",
+                summary: "峰回路转，绝处逢生，终见光明。",
+                detail: "此签预示着2026年可能会遇到一些困难和挑战，但不要灰心，转机就在眼前。遇到问题时保持冷静，积极寻找解决方案。事业上可能需要调整方向，感情上需要更多的包容和理解。"
+            },
+            {
+                name: "上签",
+                badgeClass: "badge-good",
+                poem: "紫气东来福满门，贵人相助事事顺。\n财源广进家兴旺，平安喜乐度良辰。",
+                summary: "紫气东来，贵人相助，家业兴旺。",
+                detail: "此签预示着2026年将有贵人相助，事业发展顺利。财运方面，正财偏财皆旺，适合投资理财。家庭和睦，子女孝顺。健康方面，注意饮食健康，适度运动。"
+            },
+            {
+                name: "上上签",
+                badgeClass: "badge-excellent",
+                poem: "龙腾虎跃展宏图，鹏程万里任翱翔。\n吉星高照福星照，万事如意乐无疆。",
+                summary: "大展宏图，鹏程万里，万事如意。",
+                detail: "此签预示着2026年将是你大展宏图的一年。事业上会有重大突破，可能获得晋升、创业成功或接到重要项目。财运亨通，投资回报丰厚。感情方面，桃花旺盛，有望遇到真爱或感情升温。"
+            },
+            {
+                name: "中签",
+                badgeClass: "badge-medium",
+                poem: "岁月静好福满堂，知足常乐心舒畅。\n平平淡淡才是真，平安健康最重要。",
+                summary: "岁月静好，知足常乐，平安健康。",
+                detail: "此签预示着2026年将是一个平稳祥和的年份。虽然没有大起大落，但平安健康就是最大的福气。事业上保持现状，不宜冒险。家庭和睦，亲友关系融洽。注意身体健康，保持良好心态。"
+            },
+            {
+                name: "上签",
+                badgeClass: "badge-good",
+                poem: "花开富贵福满堂，春风得意喜洋洋。\n财源广进家兴旺，前程似锦乐无疆。",
+                summary: "花开富贵，春风得意，前程似锦。",
+                detail: "此签预示着2026年将是一个充满喜悦和收获的年份。事业上稳步前进，财运逐渐好转。感情方面，有望遇到良缘或感情升温。家庭和睦，亲友关系融洽。健康方面，精力充沛，宜积极进取。"
+            },
+            {
+                name: "上上签",
+                badgeClass: "badge-excellent",
+                poem: "福星高照喜临门，万事顺遂乐无边。\n财源广进家兴旺，平安喜乐度华年。",
+                summary: "福星高照，万事顺遂，喜气洋洋。",
+                detail: "此签预示着2026年将是你幸运的一年。事业上会有重大突破，财运亨通，贵人相助。感情方面，单身者有望遇到良缘，有伴侣者感情更上一层楼。家庭和睦，亲友关系融洽。健康方面，精力充沛。"
+            },
+            {
+                name: "中签",
+                badgeClass: "badge-medium",
+                poem: "守得云开见月明，苦尽甘来福满门。\n稳扎稳打度光阴，平安喜乐度春秋。",
+                summary: "苦尽甘来，稳扎稳打，平安喜乐。",
+                detail: "此签预示着2026年需要保持耐心和毅力。虽然不会一帆风顺，但只要稳扎稳打，终将迎来转机。事业上不宜冒险，宜守成待变。感情上需要多沟通，多理解。财运平稳，不宜大额投资。"
+            }
+        ];
+
+        function drawFortune() {
+            const drawArea = document.getElementById('draw-area');
+            const resultArea = document.getElementById('fortune-result');
+            
+            drawArea.classList.add('shake-animation');
+            
+            setTimeout(() => {
+                drawArea.classList.remove('shake-animation');
+                drawArea.classList.add('hidden');
+                resultArea.classList.remove('hidden');
+                
+                const randomIndex = Math.floor(Math.random() * fortunes.length);
+                const fortune = fortunes[randomIndex];
+                
+                document.getElementById('fortune-badge').className = 'fortune-badge ' + fortune.badgeClass;
+                document.getElementById('fortune-badge').textContent = fortune.name;
+                document.getElementById('fortune-name').textContent = fortune.name;
+                document.getElementById('fortune-poem').innerHTML = fortune.poem.replace(/\n/g, '<br>');
+                document.getElementById('fortune-summary').textContent = fortune.summary;
+                document.getElementById('fortune-detail').textContent = fortune.detail;
+                
+                resultArea.classList.remove('fade-in');
+                void resultArea.offsetWidth;
+                resultArea.classList.add('fade-in');
+            }, 500);
+        }
+
+        function closeFortune() {
+            if (window.parent && window.parent.closeGame) {
+                window.parent.closeGame();
+            } else {
+                window.close();
+            }
+        }
+    </script>
+</body>
+</html>

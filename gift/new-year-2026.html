@@ -180,6 +180,11 @@
             font-size: 24px;
             margin-bottom: 6px;
         }
+        .game-card .game-icon-fortune {
+            color: #e60012;
+            font-size: 28px;
+            text-shadow: 0 0 10px rgba(230, 0, 18, 0.3);
+        }
         .game-card .game-title {
             font-size: 13px;
             font-weight: 700;
@@ -557,10 +562,26 @@
 
         <!-- AI视频系统卡片 -->
         <div class="mt-6 relative z-30">
-            <div class="game-card text-center max-w-md mx-auto" onclick="window.open('https://video.brainyxia.com/?code=PW4SVCTF', '_blank')">
-                <div class="game-icon">🎬</div>
-                <div class="game-title">AI 图片视频创作</div>
-                <div class="game-desc">一键生成高质量营销短视频</div>
+            <div class="grid grid-cols-2 gap-3 max-w-2xl mx-auto">
+                <div class="game-card text-center" onclick="window.open('https://video.brainyxia.com/?code=PW4SVCTF', '_blank')">
+                    <div class="game-icon">🎬</div>
+                    <div class="game-title">AI 视频创作</div>
+                    <div class="game-desc">一键生成短视频</div>
+                </div>
+                <div class="game-card text-center" onclick="window.open('https://showcase.brainyxia.com/', '_blank')">
+                    <div class="game-icon">🎥</div>
+                    <div class="game-title">视频案例</div>
+                    <div class="game-desc">查看优秀作品</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新年抽签卡片 -->
+        <div class="mt-6 relative z-30">
+            <div class="game-card text-center max-w-2xl mx-auto" onclick="openGame('../gift/fortune-draw.html', '新年抽签')">
+                <div class="game-icon game-icon-fortune">🧧</div>
+                <div class="game-title">新年抽签</div>
+                <div class="game-desc">测测2026运势</div>
             </div>
         </div>
 
