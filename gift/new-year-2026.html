@@ -309,6 +309,10 @@
                 animation: none;
             }
 
+            .game-card {
+                padding: 10px 12px;
+            }
+
             .game-card:hover {
                 transform: none;
                 border-color: transparent;
@@ -317,6 +321,19 @@
             .game-card:active {
                 transform: scale(0.95);
                 border-color: var(--festive-red);
+            }
+
+            .game-card .game-icon {
+                font-size: 28px;
+                margin-bottom: 8px;
+            }
+
+            .game-card .game-title {
+                font-size: 12px;
+            }
+
+            .game-card .game-desc {
+                font-size: 10px;
             }
 
             .game-modal {
@@ -509,7 +526,7 @@
         <!-- 小游戏区域 -->
         <div class="mt-8 relative z-30">
             <p class="text-xs text-gray-400 mb-4">边玩边等，时光更精彩</p>
-            <div class="grid grid-cols-5 gap-2 max-w-2xl mx-auto">
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 max-w-2xl mx-auto">
                 <div class="game-card text-center" onclick="openGame('the-acos-reflex.html', '广告竞价大挑战')">
                     <div class="game-icon">🎯</div>
                     <div class="game-title">广告竞价</div>
