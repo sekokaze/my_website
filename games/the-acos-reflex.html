@@ -489,14 +489,19 @@
                     body: JSON.stringify({ userId, score: state.score, game: 'acos-reflex' })
                 });
 
+                const data = await response.json();
+
                 if (response.ok) {
-                    const data = await response.json();
                     console.log('Score submitted:', data);
+                } else if (response.status === 429) {
+                    alert(`提交过于频繁！请等待 ${data.waitTime} 秒后再试。`);
                 } else {
                     console.error('Submit failed:', response.status, response.statusText);
+                    alert('提交失败，请稍后重试');
                 }
             } catch (error) {
                 console.error('Failed to submit score:', error);
+                alert('网络错误，请检查连接后重试');
             } finally {
                 submittingDiv.classList.add('hidden');
             }
