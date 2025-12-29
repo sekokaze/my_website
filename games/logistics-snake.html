@@ -125,9 +125,20 @@
     <div id="start-screen" class="modal">
         <i class="fas fa-truck-loading text-6xl text-orange-500 mb-4 animate-bounce"></i>
         <h2 class="text-3xl font-bold mb-2">准备发货？</h2>
-        <p class="text-gray-400 mb-8 text-center px-6">吃掉箱子增加库存<br>不要撞墙(海关)或撞自己(资金链)</p>
+        <p class="text-gray-400 mb-6 text-center px-6">吃掉箱子增加库存<br>不要撞墙(海关)或撞自己(资金链)</p>
+        
+        <div class="mb-6 w-64">
+            <label class="text-xs text-gray-400 uppercase tracking-widest block mb-2">你的代号 (ID)</label>
+            <input type="text" id="user-id" placeholder="输入你的ID..." maxlength="20"
+                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white text-center focus:outline-none focus:border-orange-500 transition">
+        </div>
+        
         <button onclick="startGame()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:scale-105 active:scale-95 text-xl">
             开始补货 (Start)
+        </button>
+        
+        <button onclick="showLeaderboard()" class="mt-4 text-gray-400 hover:text-orange-400 transition">
+            <i class="fas fa-trophy mr-2"></i>查看排行榜
         </button>
     </div>
 
@@ -138,13 +149,42 @@
         <h2 class="text-3xl font-bold mb-2 text-red-500" id="death-title">资金链断裂!</h2>
         <p class="text-gray-300 mb-6 text-center px-6" id="death-reason">你撞到了自己，导致现金流崩溃。</p>
         
-        <div class="bg-gray-800 p-4 rounded-lg mb-8 text-center border border-gray-600 w-64">
+        <div class="bg-gray-800 p-4 rounded-lg mb-6 text-center border border-gray-600 w-64">
             <p class="text-xs text-gray-400 uppercase tracking-widest">最终库存</p>
             <p class="text-4xl font-bold text-white mt-1" id="final-score">0</p>
         </div>
 
-        <button onclick="startGame()" class="bg-white text-gray-900 hover:bg-gray-200 font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:scale-105 active:scale-95">
-            重新发货 (Restart)
+        <div id="submitting-score" class="hidden mb-4">
+            <i class="fas fa-spinner fa-spin text-orange-500"></i>
+            <span class="text-gray-400 ml-2">正在提交分数...</span>
+        </div>
+
+        <div class="flex flex-col gap-3">
+            <button onclick="startGame()" class="bg-white text-gray-900 hover:bg-gray-200 font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:scale-105 active:scale-95">
+                重新发货 (Restart)
+            </button>
+            <button onclick="showLeaderboard()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition">
+                <i class="fas fa-trophy mr-2"></i>查看排行榜
+            </button>
+        </div>
+    </div>
+
+    <!-- Leaderboard Screen -->
+    <div id="leaderboard-screen" class="modal hidden">
+        <div class="text-6xl text-orange-500 mb-4">
+            <i class="fas fa-trophy"></i>
+        </div>
+        <h2 class="text-3xl font-bold mb-6">FBA 补货排行榜</h2>
+        
+        <div id="leaderboard-loading" class="text-gray-400 mb-6">
+            <i class="fas fa-spinner fa-spin"></i> 加载中...
+        </div>
+        
+        <div id="leaderboard-list" class="bg-gray-800 rounded-lg border border-gray-600 w-80 max-h-80 overflow-y-auto mb-6 hidden">
+        </div>
+        
+        <button onclick="hideLeaderboard()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:scale-105 active:scale-95">
+            返回
         </button>
     </div>
 
@@ -391,6 +431,8 @@
                 
                 document.getElementById('game-over-screen').classList.remove('hidden');
                 document.getElementById('start-hint').classList.add('hidden');
+                
+                submitScore();
             }
             return gameOver;
         }
@@ -510,6 +552,83 @@
                 ctx.textAlign = "center";
                 ctx.fillText("暂停盘点中...", canvas.width/dpr/2, canvas.height/dpr/2);
             }
+        }
+
+        async function submitScore() {
+            const userId = document.getElementById('user-id').value.trim();
+            if (!userId) return;
+
+            const submittingDiv = document.getElementById('submitting-score');
+            submittingDiv.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/api/submit-score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, score })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Score submitted:', data);
+                }
+            } catch (error) {
+                console.error('Failed to submit score:', error);
+            } finally {
+                submittingDiv.classList.add('hidden');
+            }
+        }
+
+        async function showLeaderboard() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.add('hidden');
+            document.getElementById('leaderboard-screen').classList.remove('hidden');
+            
+            const loadingDiv = document.getElementById('leaderboard-loading');
+            const listDiv = document.getElementById('leaderboard-list');
+            
+            loadingDiv.classList.remove('hidden');
+            listDiv.classList.add('hidden');
+            listDiv.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+
+                if (data.leaderboard && data.leaderboard.length > 0) {
+                    listDiv.innerHTML = data.leaderboard.map(entry => {
+                        const medal = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`;
+                        const date = new Date(entry.timestamp).toLocaleDateString('zh-CN');
+                        return `
+                            <div class="flex items-center justify-between p-3 border-b border-gray-700 last:border-0 ${entry.userId === document.getElementById('user-id').value ? 'bg-orange-900/30' : ''}">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xl w-8 text-center">${medal}</span>
+                                    <div>
+                                        <div class="font-bold text-white">${entry.userId}</div>
+                                        <div class="text-xs text-gray-400">${date}</div>
+                                    </div>
+                                </div>
+                                <div class="text-2xl font-bold text-orange-400">${entry.score}</div>
+                            </div>
+                        `;
+                    }).join('');
+                    listDiv.classList.remove('hidden');
+                } else {
+                    listDiv.innerHTML = '<div class="p-6 text-center text-gray-400">暂无排行榜数据</div>';
+                    listDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Failed to load leaderboard:', error);
+                listDiv.innerHTML = '<div class="p-6 text-center text-red-400">加载排行榜失败</div>';
+                listDiv.classList.remove('hidden');
+            } finally {
+                loadingDiv.classList.add('hidden');
+            }
+        }
+
+        function hideLeaderboard() {
+            document.getElementById('leaderboard-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
         }
     </script>
 </body>
