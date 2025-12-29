@@ -648,14 +648,15 @@
             document.querySelector('h1').innerText = '2026 已到达';
             
             startFireworks();
-            // 狂欢模式弹幕
             setInterval(() => {
-                const wishes = ["新年快乐！", "恭喜发财", "万事如意", "身体健康", "2026你好", "好运连连", "大吉大利"];
-                const randomWish = wishes[Math.floor(Math.random() * wishes.length)];
-                createDanmaku(randomWish, true);
+                if(celebrationMessages.length > 0) {
+                    const randomWish = celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)];
+                    createDanmaku(randomWish, true);
+                }
             }, 300);
         }
 
+        loadDanmakuData();
         setInterval(updateCountdown, 1000);
         updateCountdown();
 
@@ -677,57 +678,52 @@
          */
         const danmakuLayer = document.getElementById('danmaku-layer');
         const danmakuInput = document.getElementById('danmaku-input');
-        const defaultMessages = [
-            "祝大家新年快乐！", "2026我要暴富", "身体健康，吃嘛嘛香", "坐等跨年", 
-            "家人闲坐，灯火可亲", "平安喜乐", "再见2025", "新的一年加油",
-            "许愿考公上岸", "脱单！脱单！", "世界和平", "2026年大卖", "2026年爆爆爆",
-            "你好 2026",
-            "新年新开始",
-            "2026 请对我好一点",
-            "一起走进 2026",
-            "新年快乐，万事顺意",
-            "2026 继续搞钱",
-            "不暴富，但稳稳赚",
-            "2026，少踩坑多赚钱",
-            "活着就赢，赚钱更赢",
-            "先活下来，再做大",
-            "2026，慢一点但更稳",
-            "不焦虑，只前进",
-            "把复杂的事做好",
-            "时间会奖励长期主义",
-            "明年此刻，还在牌桌上"
-        ];
         
-        // 简约风颜色：红色、金色、深灰、橙色
-        const colors = ['#e60012', '#ffac33', '#333333', '#ff6b6b', '#f97316'];
+        let defaultMessages = [];
+        let celebrationMessages = [];
+        let colors = [];
+
+        async function loadDanmakuData() {
+            try {
+                const response = await fetch('./danmaku-data.json');
+                const data = await response.json();
+                defaultMessages = data.defaultMessages;
+                celebrationMessages = data.celebrationMessages;
+                colors = data.colors;
+            } catch (error) {
+                console.error('加载弹幕数据失败:', error);
+                defaultMessages = ["新年快乐！"];
+                celebrationMessages = ["新年快乐！"];
+                colors = ['#e60012'];
+            }
+        }
 
         function createDanmaku(text, isHighlight = false) {
             const el = document.createElement('div');
             el.innerText = text;
             el.className = 'danmaku-item';
             
-            // 样式设置
             el.style.color = isHighlight ? '#e60012' : colors[Math.floor(Math.random() * colors.length)];
-            el.style.fontSize = (Math.random() * 6 + 16) + 'px'; // 16-22px
+            el.style.fontSize = (Math.random() * 6 + 16) + 'px';
             
             if (isHighlight) {
                 el.style.fontSize = '24px';
                 el.style.zIndex = 100;
                 el.style.fontWeight = 'bold';
-                el.style.backgroundColor = 'rgba(255,255,255,0.9)'; // 白底
+                el.style.backgroundColor = 'rgba(255,255,255,0.9)';
                 el.style.padding = '4px 12px';
                 el.style.borderRadius = '20px';
                 el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
                 el.style.border = '1px solid #e60012';
             }
             
-            const topPos = Math.floor(Math.random() * 40); // 0-40vh
+            const topPos = Math.floor(Math.random() * 40);
             el.style.top = topPos + 'vh';
             el.style.left = '100vw'; 
 
             danmakuLayer.appendChild(el);
 
-            const speed = Math.random() * 8 + 8; // 8-16s 慢一点更优雅
+            const speed = Math.random() * 8 + 8;
             el.style.transition = `transform ${speed}s linear`;
             
             el.offsetHeight; 
@@ -740,11 +736,11 @@
         }
 
         setInterval(() => {
-            if(!hasEnded) {
+            if(!hasEnded && defaultMessages.length > 0) {
                 const msg = defaultMessages[Math.floor(Math.random() * defaultMessages.length)];
                 createDanmaku(msg);
             }
-        }, 2000); // 频率稍微降低
+        }, 2000);
 
         function sendUserDanmaku() {
             const text = danmakuInput.value.trim();
