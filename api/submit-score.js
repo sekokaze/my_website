@@ -25,7 +25,7 @@ export async function GET(request) {
       });
     }
 
-    return Response.json(leaderboard);
+    return Response.json({ leaderboard });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

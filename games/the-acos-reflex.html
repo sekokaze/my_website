@@ -522,8 +522,9 @@
 
         function renderLeaderboard(data) {
             const content = document.getElementById('leaderboard-content');
+            const leaderboard = data.leaderboard || data;
             
-            if (!data || data.length === 0) {
+            if (!leaderboard || leaderboard.length === 0) {
                 content.innerHTML = '<div class="text-center text-gray-400 py-8">暂无数据</div>';
                 return;
             }
@@ -531,7 +532,7 @@
             const medals = ['🥇', '🥈', '🥉'];
             let html = '';
             
-            data.forEach((entry, index) => {
+            leaderboard.forEach((entry, index) => {
                 const medal = index < 3 ? medals[index] : `<span class="text-gray-400 font-bold">${index + 1}</span>`;
                 const bgClass = index < 3 ? 'bg-gradient-to-r from-yellow-50 to-orange-50' : 'bg-gray-50';
                 
