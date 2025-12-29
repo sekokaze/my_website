@@ -37,12 +37,39 @@
             font-size: 24px;
             transition: all 0.1s;
             backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .btn-control:active {
             background-color: #FF9900;
             border-color: #FF9900;
             transform: scale(0.9);
+        }
+
+        /* 移动端控制区域样式 */
+        .mobile-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 20px 30px 20px;
+            width: 100%;
+            max-width: 280px;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .mobile-controls {
+                display: none;
+            }
         }
 
         /* Modal Overlay */
@@ -102,18 +129,18 @@
     </div>
 
     <!-- Mobile Controls (D-Pad) -->
-    <div class="w-full max-w-xs grid grid-cols-3 gap-2 px-6 pb-8 z-10 md:hidden">
-        <div></div>
-        <div class="flex justify-center"><button class="btn-control" id="btn-up"><i class="fas fa-chevron-up"></i></button></div>
-        <div></div>
-        
-        <div class="flex justify-center"><button class="btn-control" id="btn-left"><i class="fas fa-chevron-left"></i></button></div>
-        <div class="flex justify-center"><button class="btn-control bg-orange-600 border-orange-500" onclick="togglePause()"><i class="fas fa-pause text-sm"></i></button></div>
-        <div class="flex justify-center"><button class="btn-control" id="btn-right"><i class="fas fa-chevron-right"></i></button></div>
-        
-        <div></div>
-        <div class="flex justify-center"><button class="btn-control" id="btn-down"><i class="fas fa-chevron-down"></i></button></div>
-        <div></div>
+    <div class="mobile-controls">
+        <div class="control-row">
+            <button class="btn-control" id="btn-up"><i class="fas fa-chevron-up"></i></button>
+        </div>
+        <div class="control-row">
+            <button class="btn-control" id="btn-left"><i class="fas fa-chevron-left"></i></button>
+            <button class="btn-control bg-orange-600 border-orange-500" onclick="togglePause()"><i class="fas fa-pause text-sm"></i></button>
+            <button class="btn-control" id="btn-right"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="control-row">
+            <button class="btn-control" id="btn-down"><i class="fas fa-chevron-down"></i></button>
+        </div>
     </div>
 
     <!-- Desktop Hint -->
