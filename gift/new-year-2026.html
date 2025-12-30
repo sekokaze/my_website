@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <!-- 引入 FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         :root {
@@ -437,6 +439,10 @@
             }
         }
     </style>
+    <script>
+        window.SUPABASE_URL = '__SUPABASE_URL__';
+        window.SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+    </script>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen relative">
 
@@ -683,6 +689,92 @@
         let celebrationMessages = [];
         let colors = [];
 
+        let supabase = null;
+        let danmakuChannel = null;
+
+        async function loadRecentDanmaku() {
+            try {
+                const { data, error } = await supabase
+                    .from('danmaku')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+
+                if (error) throw error;
+
+                data.reverse().forEach((danmaku, index) => {
+                    setTimeout(() => {
+                        createDanmaku(danmaku.text, danmaku.is_highlight);
+                    }, index * 1500);
+                });
+            } catch (error) {
+                console.error('加载历史弹幕失败:', error);
+            }
+        }
+
+        let localDanmakuInterval = null;
+        let realTimeDanmakuQueue = [];
+        let isProcessingQueue = false;
+
+        function startLocalDanmaku() {
+            if (localDanmakuInterval) return;
+            
+            localDanmakuInterval = setInterval(() => {
+                if(!hasEnded && defaultMessages.length > 0) {
+                    const msg = defaultMessages[Math.floor(Math.random() * defaultMessages.length)];
+                    createDanmaku(msg);
+                }
+            }, 4000);
+        }
+
+        function processRealTimeDanmaku() {
+            if (isProcessingQueue || realTimeDanmakuQueue.length === 0) return;
+            
+            isProcessingQueue = true;
+            const danmaku = realTimeDanmakuQueue.shift();
+            createDanmaku(danmaku.text, danmaku.is_highlight);
+            
+            setTimeout(() => {
+                isProcessingQueue = false;
+                processRealTimeDanmaku();
+            }, 2000);
+        }
+
+        async function initSupabase() {
+            const supabaseUrl = window.SUPABASE_URL;
+            const supabaseKey = window.SUPABASE_ANON_KEY;
+
+            if (!supabaseUrl || !supabaseKey) {
+                console.warn('Supabase 配置未找到，使用本地弹幕模式');
+                return false;
+            }
+
+            try {
+                supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+                
+                danmakuChannel = supabase
+                    .channel('danmaku-channel')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'danmaku' }, (payload) => {
+                        realTimeDanmakuQueue.push({
+                            text: payload.new.text,
+                            is_highlight: payload.new.is_highlight
+                        });
+                        processRealTimeDanmaku();
+                    })
+                    .subscribe((status) => {
+                        if (status === 'SUBSCRIBED') {
+                            console.log('已连接到 Supabase Realtime');
+                            loadRecentDanmaku();
+                        }
+                    });
+
+                return true;
+            } catch (error) {
+                console.error('Supabase 初始化失败:', error);
+                return false;
+            }
+        }
+
         async function loadDanmakuData() {
             try {
                 const response = await fetch('./danmaku-data.json');
@@ -696,6 +788,9 @@
                 celebrationMessages = ["新年快乐！"];
                 colors = ['#e60012'];
             }
+
+            await initSupabase();
+            startLocalDanmaku();
         }
 
         function createDanmaku(text, isHighlight = false) {
@@ -735,23 +830,28 @@
             }, speed * 1000);
         }
 
-        setInterval(() => {
-            if(!hasEnded && defaultMessages.length > 0) {
-                const msg = defaultMessages[Math.floor(Math.random() * defaultMessages.length)];
-                createDanmaku(msg);
-            }
-        }, 2000);
-
-        function sendUserDanmaku() {
+        async function sendUserDanmaku() {
             const text = danmakuInput.value.trim();
             if (text) {
-                createDanmaku(text, true);
+                if (supabase) {
+                    try {
+                        await supabase.from('danmaku').insert({
+                            text: text,
+                            is_highlight: true
+                        });
+                    } catch (error) {
+                        console.error('发送弹幕失败:', error);
+                        createDanmaku(text, true);
+                    }
+                } else {
+                    createDanmaku(text, true);
+                }
+                
                 danmakuInput.value = '';
                 
-                // 简单的按钮反馈
                 const btn = document.querySelector('.festive-btn');
                 const originText = btn.innerText;
-                btn.style.backgroundColor = '#10b981'; // 变绿表示成功
+                btn.style.backgroundColor = '#10b981';
                 btn.innerText = '已发送';
                 setTimeout(() => {
                     btn.style.backgroundColor = '';
