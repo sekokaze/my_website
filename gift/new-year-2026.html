@@ -725,13 +725,13 @@
 
                 if (error) throw error;
 
-                const count = Math.floor(Math.random() * 4) + 5;
+                const count = Math.floor(Math.random() * 3) + 3;
                 const shuffled = data.sort(() => Math.random() - 0.5);
                 const selected = shuffled.slice(0, count);
 
-                let delay = 0;
+                let delay = 3000;
                 selected.forEach((danmaku) => {
-                    const randomDelay = Math.random() * 2000 + 1000;
+                    const randomDelay = Math.random() * 4000 + 5000;
                     delay += randomDelay;
                     setTimeout(() => {
                         createDanmaku(danmaku.text, danmaku.is_highlight, true);
@@ -751,8 +751,13 @@
             
             localDanmakuInterval = setInterval(() => {
                 if(!hasEnded && defaultMessages.length > 0) {
-                    const msg = defaultMessages[Math.floor(Math.random() * defaultMessages.length)];
-                    createDanmaku(msg);
+                    const count = Math.floor(Math.random() * 3) + 3;
+                    for(let i = 0; i < count; i++) {
+                        setTimeout(() => {
+                            const msg = defaultMessages[Math.floor(Math.random() * defaultMessages.length)];
+                            createDanmaku(msg);
+                        }, i * 1500);
+                    }
                 }
             }, 8000);
         }
