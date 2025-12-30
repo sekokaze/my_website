@@ -69,8 +69,20 @@
             font-weight: 500;
             opacity: 0.8;
             will-change: transform;
-            /* 简约风不需要太强的文字阴影，稍微一点白色描边即可增加可读性 */
             text-shadow: 1px 1px 0px white, -1px -1px 0px white; 
+        }
+
+        .danmaku-item.realtime {
+            animation: realtime-glow 1.5s ease-in-out infinite;
+        }
+
+        @keyframes realtime-glow {
+            0%, 100% {
+                box-shadow: 0 0 5px rgba(230, 0, 18, 0.5), 0 0 10px rgba(230, 0, 18, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 15px rgba(230, 0, 18, 0.8), 0 0 25px rgba(230, 0, 18, 0.5);
+            }
         }
 
         /* 烟花 Canvas */
@@ -743,7 +755,7 @@
             
             isProcessingQueue = true;
             const danmaku = realTimeDanmakuQueue.shift();
-            createDanmaku(danmaku.text, danmaku.is_highlight);
+            createDanmaku(danmaku.text, danmaku.is_highlight, true);
             
             setTimeout(() => {
                 isProcessingQueue = false;
@@ -804,10 +816,14 @@
             startLocalDanmaku();
         }
 
-        function createDanmaku(text, isHighlight = false) {
+        function createDanmaku(text, isHighlight = false, isRealtime = false) {
             const el = document.createElement('div');
             el.innerText = text;
             el.className = 'danmaku-item';
+            
+            if (isRealtime) {
+                el.classList.add('realtime');
+            }
             
             el.style.color = isHighlight ? '#e60012' : colors[Math.floor(Math.random() * colors.length)];
             el.style.fontSize = (Math.random() * 6 + 16) + 'px';
@@ -821,6 +837,15 @@
                 el.style.borderRadius = '20px';
                 el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
                 el.style.border = '1px solid #e60012';
+            } else if (isRealtime) {
+                el.style.fontSize = '20px';
+                el.style.zIndex = 60;
+                el.style.fontWeight = '600';
+                el.style.backgroundColor = 'rgba(255,250,250,0.85)';
+                el.style.padding = '3px 10px';
+                el.style.borderRadius = '15px';
+                el.style.boxShadow = '0 2px 6px rgba(230, 0, 18, 0.15)';
+                el.style.border = '1px solid rgba(230, 0, 18, 0.3)';
             }
             
             const topPos = Math.floor(Math.random() * 40);
