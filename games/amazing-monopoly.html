@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Amazing 大富翁 - 爆单之路 (扩充版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #232F3E; /* Dark Blue Theme */
+            color: #333;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* 棋盘网格布局 */
+        .board-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 3px;
+            width: 98%; 
+            max-width: 800px; 
+            aspect-ratio: 1/1;
+            margin: 0 auto;
+            padding: 4px;
+            background: #131921;
+            position: relative; 
+        }
+
+        /* 格子样式 */
+        .tile {
+            background-color: #f3f3f3;
+            border-radius: 3px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px; 
+            text-align: center;
+            position: relative;
+            border: 1px solid transparent;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+            padding: 2px;
+            overflow: hidden;
+        }
+
+        .tile-name {
+            font-weight: bold;
+            line-height: 1.1;
+            margin-bottom: 2px;
+            font-size: 13px; 
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+        }
+
+        .tile-price {
+            font-size: 11px; 
+            font-weight: bold;
+            color: #555;
+        }
+
+        /* 特殊格子颜色 */
+        .tile-start { background-color: #bbf7d0; border-color: #22c55e; } 
+        .tile-jail { background-color: #fecaca; border-color: #ef4444; } 
+        .tile-chance { background-color: #fef08a; border-color: #eab308; } 
+        .tile-tax { background-color: #e5e7eb; border-color: #6b7280; } 
+        .tile-prop { background-color: white; }
+        .tile-event { background-color: #e9d5ff; border-color: #9333ea; } 
+
+        /* 玩家棋子 */
+        .player-token {
+            position: absolute;
+            top: 0; 
+            left: 0; 
+            width: 32px; 
+            height: 32px;
+            background-color: #FF9900;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            pointer-events: none; 
+        }
+
+        /* 核心大按钮样式 (骰子/指南/重开) */
+        .big-btn {
+            width: 64px; 
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px; 
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        .big-btn:active { transform: scale(0.95); }
+        
+        .dice-btn-style { background: white; color: #1f2937; font-size: 36px; }
+        
+        .glossary-btn-style { background: #374151; color: #9ca3af; border: 1px solid #4b5563; }
+        .glossary-btn-style:hover { background: #4b5563; color: white; }
+
+        .restart-btn-style { background: #374151; color: #f87171; border: 1px solid #4b5563; }
+        .restart-btn-style:hover { background: #4b5563; color: #ef4444; }
+
+        .dice-rolling { animation: shake 0.5s infinite; }
+
+        @keyframes shake {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(10deg); }
+            50% { transform: rotate(0deg); }
+            75% { transform: rotate(-10deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        /* 中间控制区 */
+        .center-area {
+            grid-column: 2 / span 6; 
+            grid-row: 2 / span 6;
+            background: #232F3E;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            color: white;
+            z-index: 10;
+            gap: 8px; 
+        }
+
+        /* 已购买的产品标记 */
+        .owned-mark {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px; 
+            height: 8px;
+            border-radius: 50%;
+            background-color: #FF9900;
+            box-shadow: 0 0 2px rgba(0,0,0,0.3);
+        }
+        
+        /* 等级星级 */
+        .level-stars {
+            color: #FF9900;
+            font-size: 10px;
+            margin-top: 1px;
+            line-height: 1;
+            height: 10px; 
+        }
+
+        /* 消息日志 */
+        .log-box {
+            width: 95%;
+            height: 90px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            overflow-y: auto;
+            font-size: 13px;
+            padding: 8px;
+            text-align: left;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .log-item { margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 3px; }
+        .log-good { color: #4ade80; }
+        .log-bad { color: #f87171; }
+        .log-info { color: #94a3b8; }
+
+        /* 弹窗通用样式 */
+        .modal {
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(4px);
+        }
+        
+        /* 模式选择按钮 */
+        .mode-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: left;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .mode-btn:hover { transform: scale(1.02); border-color: rgba(255,255,255,0.3); }
+        .mode-btn::after {
+            content: '';
+            position: absolute;
+            right: -10px;
+            bottom: -10px;
+            font-size: 40px;
+            opacity: 0.1;
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+        }
+        
+        /* 列表 */
+        .intro-list li {
+            margin-bottom: 10px; 
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            text-align: left;
+            font-size: 14px; 
+            color: #e5e7eb;
+        }
+        .intro-icon { min-width: 24px; text-align: center; color: #FF9900; font-size: 16px; }
+
+        /* Toast 提示条 */
+        .toast {
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(-10px); }
+        .toast.error { background-color: rgba(220, 38, 38, 0.95); border: 1px solid #fecaca; }
+        
+        /* HUD 样式 */
+        .hud-box {
+            background-color: #374151;
+            border: 1px solid #4b5563;
+            border-radius: 8px;
+            padding: 4px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+            overflow: hidden;
+        }
+        .hud-label {
+            font-size: 10px;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1px;
+            white-space: nowrap;
+        }
+        .hud-value {
+            font-family: 'Roboto', sans-serif;
+            font-weight: 900;
+            line-height: 1.1;
+            font-size: 18px; 
+        }
+        @media (min-width: 400px) {
+            .hud-value { font-size: 22px; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center p-2">
+
+    <!-- 游戏标题 -->
+    <div class="text-white text-center mb-2">
+        <h1 class="text-2xl font-bold italic flex items-center justify-center gap-2">
+            <i class="fas fa-truck-fast text-orange-500"></i> Amazing Poly
+        </h1>
+        <p class="text-xs text-gray-400">大富翁：爆单之路 (扩充版)</p>
+    </div>
+
+    <!-- 棋盘容器 -->
+    <div class="board-grid" id="board">
+        <!-- 格子由 JS 生成 -->
+        
+        <!-- 玩家棋子 -->
+        <div id="player" class="player-token hidden">
+            <i class="fas fa-box text-base text-gray-800"></i>
+        </div>
+
+        <!-- 中间控制区 -->
+        <div class="center-area">
+            
+            <!-- 顶部数据面板 (4列布局) -->
+            <div class="w-full grid grid-cols-4 gap-1 px-1 h-16">
+                <!-- 现金 -->
+                <div class="hud-box">
+                    <div class="hud-label">现金流</div>
+                    <div class="hud-value text-green-400" id="cash-display">$2k</div>
+                </div>
+                <!-- 收益 -->
+                <div class="hud-box">
+                    <div class="hud-label">回款日</div>
+                    <div class="hud-value text-yellow-400" id="income-display">+$200</div>
+                </div>
+                <!-- 资产 -->
+                <div class="hud-box">
+                    <div class="hud-label" id="target-label">总资产</div>
+                    <div class="hud-value text-white" id="target-main-display">$2k</div>
+                </div>
+                <!-- 回合 (改为 回款周期) -->
+                <div class="hud-box relative">
+                    <div id="turn-progress" class="absolute bottom-0 left-0 h-1 bg-blue-500 transition-all duration-500" style="width: 0%"></div>
+                    <div class="hud-label">回款周期</div>
+                    <div class="hud-value text-blue-400" id="turn-display">0/15</div>
+                </div>
+            </div>
+
+            <!-- 操作区：大按钮 -->
+            <div class="flex items-center justify-center gap-4 my-2 w-full">
+                
+                <!-- 术语手册按钮 (左侧) -->
+                <div class="flex flex-col items-center gap-1">
+                    <div class="big-btn glossary-btn-style" onclick="showGlossary()">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <span class="text-[10px] text-gray-500 font-bold">指南</span>
+                </div>
+
+                <!-- 骰子按钮 (中间) -->
+                <div class="flex flex-col items-center gap-1">
+                    <div id="dice-btn" class="big-btn dice-btn-style" onclick="rollDice()">
+                        <i class="fas fa-dice text-gray-800"></i>
+                    </div>
+                    <p class="text-[10px] text-gray-400 font-bold h-4" id="action-hint">掷骰子</p>
+                </div>
+
+                <!-- 重开按钮 (右侧) -->
+                <div class="flex flex-col items-center gap-1">
+                    <div class="big-btn restart-btn-style" onclick="resetGame()">
+                        <i class="fas fa-redo"></i>
+                    </div>
+                    <span class="text-[10px] text-gray-500 font-bold">重开</span>
+                </div>
+
+            </div>
+
+            <!-- 消息日志 -->
+            <div class="log-box" id="game-log">
+                <div class="log-item log-info">欢迎来到 Amazing 大富翁！</div>
+                <div class="log-item log-info">请选择游戏模式...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 介绍/模式选择弹窗 -->
+    <div id="intro-modal" class="fixed inset-0 modal flex items-center justify-center z-[60]">
+        <div class="bg-gray-800 border-2 border-gray-600 rounded-xl p-6 w-96 text-center shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <div class="mb-2 text-orange-500 text-5xl">
+                <i class="fas fa-map-marked-alt"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-1">选择经营模式</h2>
+            <p class="text-xs text-gray-400 mb-6 uppercase tracking-widest">你的目标是成为亿级大卖</p>
+            
+            <div class="space-y-3">
+                <button onclick="startGame('easy')" class="mode-btn bg-gradient-to-r from-green-900 to-gray-800 text-green-100 hover:from-green-800">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-base"><i class="fas fa-seedling mr-2"></i>创业起步 (简单)</span>
+                        <span class="text-xl font-bold">$8,000</span>
+                    </div>
+                    <div class="text-xs opacity-60 font-normal">限 15 个回款日 | 初始资金 $2,000</div>
+                </button>
+
+                <button onclick="startGame('hard')" class="mode-btn bg-gradient-to-r from-orange-900 to-gray-800 text-orange-100 hover:from-orange-800">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-base"><i class="fas fa-fire mr-2"></i>类目大卖 (困难)</span>
+                        <span class="text-xl font-bold">$20,000</span>
+                    </div>
+                    <div class="text-xs opacity-60 font-normal">限 30 个回款日 | 初始资金 $2,000</div>
+                </button>
+
+                <button onclick="startGame('endless')" class="mode-btn bg-gradient-to-r from-blue-900 to-gray-800 text-blue-100 hover:from-blue-800">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-base"><i class="fas fa-infinity mr-2"></i>永续经营 (无限)</span>
+                        <span class="text-xl font-bold">无上限</span>
+                    </div>
+                    <div class="text-xs opacity-60 font-normal">无时间限制 | 目标：生存下去</div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 运营避坑指南弹窗 -->
+    <div id="glossary-modal" class="fixed inset-0 modal flex items-center justify-center z-[70] hidden">
+        <div class="bg-gray-800 border-2 border-gray-600 rounded-xl p-6 w-80 shadow-2xl relative">
+            <button onclick="document.getElementById('glossary-modal').classList.add('hidden')" class="absolute top-2 right-3 text-gray-400 hover:text-white text-xl">&times;</button>
+            
+            <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-600 pb-2"><i class="fas fa-book mr-2 text-orange-500"></i>运营避坑指南</h3>
+            
+            <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                <div class="bg-gray-900/50 p-3 rounded border-l-4 border-yellow-500">
+                    <h4 class="text-yellow-400 font-bold text-sm mb-1">💸 VAT 税金 (Value Added Tax)</h4>
+                    <p class="text-xs text-gray-400">欧洲站的增值税。合规运营必须缴纳，否则店铺会被封。游戏中这是一个高额扣费点。</p>
+                </div>
+                
+                <div class="bg-gray-900/50 p-3 rounded border-l-4 border-red-500">
+                    <h4 class="text-red-400 font-bold text-sm mb-1">🚫 二审 / 封号 (Account Suspension)</h4>
+                    <p class="text-xs text-gray-400">亚马逊对账号进行的严格审核，通常由资料关联、侵权等触发。触发后你的资金将被冻结，几回合内无法操作。</p>
+                </div>
+
+                <div class="bg-gray-900/50 p-3 rounded border-l-4 border-purple-500">
+                    <h4 class="text-purple-400 font-bold text-sm mb-1">🏭 工厂延期 (Factory Delay)</h4>
+                    <p class="text-xs text-gray-400">供应链掉链子。可能是原材料涨价或限电，导致无法按时发货。游戏中会让你倒退几步，可能再次踩雷。</p>
+                </div>
+
+                <div class="bg-gray-900/50 p-3 rounded border-l-4 border-green-500">
+                    <h4 class="text-green-400 font-bold text-sm mb-1">💰 回款日 (Payout Date)</h4>
+                    <p class="text-xs text-gray-400">亚马逊每14天打款一次。在游戏中经过起点即视为回款，你会获得底薪加上所有产品的运营利润。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏弹窗：购买/事件 -->
+    <div id="modal" class="fixed inset-0 modal flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 w-80 text-center shadow-2xl relative border-t-4 border-orange-500">
+            <div id="modal-icon" class="text-6xl mb-4 text-gray-700">📦</div>
+            <h3 id="modal-title" class="text-2xl font-bold text-gray-800 mb-2">Title</h3>
+            <p id="modal-desc" class="text-base text-gray-600 mb-6 leading-relaxed px-2">Description</p>
+            
+            <div id="modal-actions" class="flex flex-col gap-3">
+                <!-- 按钮动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 容器 -->
+    <div id="toast-container"></div>
+
+    <script>
+        // --- 游戏配置 ---
+        const GRID_SIZE = 8; 
+        const TOTAL_TILES = 28; 
+        
+        // 地图数据 (28格)
+        const mapData = [
+            // Top Row (0-7)
+            { type: 'START', name: '回款日', icon: 'fa-money-bill-wave' },
+            { type: 'PROP', name: '手机壳', cost: 200, income: 50, level: 0, owner: null, icon: 'fa-mobile-alt' },
+            { type: 'PROP', name: '数据线', cost: 300, income: 80, level: 0, owner: null, icon: 'fa-plug' },
+            { type: 'CHANCE', name: '运营事件', icon: 'fa-question' },
+            { type: 'PROP', name: '蓝牙耳机', cost: 500, income: 150, level: 0, owner: null, icon: 'fa-headphones' },
+            { type: 'TAX', name: '仓储费', cost: 200, icon: 'fa-warehouse' },
+            { type: 'PROP', name: '瑜伽垫', cost: 600, income: 180, level: 0, owner: null, icon: 'fa-walking' },
+            { type: 'JAIL', name: '二审/封号', icon: 'fa-lock' }, 
+
+            // Right Column (8-13)
+            { type: 'PROP', name: '猫砂盆', cost: 700, income: 210, level: 0, owner: null, icon: 'fa-cat' },
+            { type: 'PROP', name: '喂食器', cost: 800, income: 240, level: 0, owner: null, icon: 'fa-cookie-bite' },
+            { type: 'CHANCE', name: '运营事件', icon: 'fa-question' },
+            { type: 'PROP', name: '筋膜枪', cost: 900, income: 270, level: 0, owner: null, icon: 'fa-hammer' },
+            { type: 'BACK', name: '工厂延期', icon: 'fa-history' }, 
+            { type: 'PROP', name: '空气炸锅', cost: 1000, income: 300, level: 0, owner: null, icon: 'fa-utensils' },
+
+            // Bottom Row (14-21)
+            { type: 'FREE', name: 'Prime Day', icon: 'fa-gift' }, 
+            { type: 'PROP', name: '扫地机', cost: 1200, income: 360, level: 0, owner: null, icon: 'fa-robot' },
+            { type: 'PROP', name: '投影仪', cost: 1400, income: 420, level: 0, owner: null, icon: 'fa-video' },
+            { type: 'TAX', name: 'PPC超支', cost: 500, icon: 'fa-chart-line' },
+            { type: 'PROP', name: '升降桌', cost: 1600, income: 480, level: 0, owner: null, icon: 'fa-arrows-alt-v' },
+            { type: 'CHANCE', name: '运营事件', icon: 'fa-question' },
+            { type: 'PROP', name: '无人机', cost: 1800, income: 540, level: 0, owner: null, icon: 'fa-plane' },
+            { type: 'GO_TO_JAIL', name: '被投诉', icon: 'fa-exclamation-triangle' }, 
+
+            // Left Column (22-27)
+            { type: 'PROP', name: '电竞椅', cost: 2000, income: 600, level: 0, owner: null, icon: 'fa-chair' },
+            { type: 'BONUS', name: '天使融资', icon: 'fa-hand-holding-usd' }, 
+            { type: 'PROP', name: '户外电源', cost: 2500, income: 750, level: 0, owner: null, icon: 'fa-battery-full' },
+            { type: 'PROP', name: '3D打印机', cost: 3000, income: 900, level: 0, owner: null, icon: 'fa-cube' },
+            { type: 'TAX', name: 'VAT税金', cost: 800, icon: 'fa-file-invoice-dollar' }, 
+            { type: 'PROP', name: '智能手表', cost: 3500, income: 1050, level: 0, owner: null, icon: 'fa-clock' }
+        ];
+
+        // 玩家状态
+        let player = {
+            pos: 0,
+            cash: 2000,
+            baseSalary: 200,
+            suspended: 0,
+            assets: 2000, // 初始资产 = 现金
+            payoutCount: 0 // 改为记录回款日次数
+        };
+
+        // 游戏模式配置
+        let gameConfig = {
+            mode: 'endless', 
+            maxPayouts: Infinity, // 改为限制回款日
+            targetAssets: Infinity
+        };
+
+        let isAnimating = false;
+
+        // --- 初始化 ---
+        window.onload = function() {
+            renderBoard();
+            
+            setTimeout(() => {
+                movePlayerToken(0); 
+                document.getElementById('player').classList.remove('hidden');
+            }, 100);
+            
+            window.addEventListener('resize', () => movePlayerToken(player.pos));
+        };
+
+        function showGlossary() {
+            document.getElementById('glossary-modal').classList.remove('hidden');
+        }
+
+        function startGame(mode) {
+            document.getElementById('intro-modal').classList.add('hidden');
+            
+            gameConfig.mode = mode;
+            player.payoutCount = 0; // 初始为0
+
+            if (mode === 'easy') {
+                gameConfig.maxPayouts = 15; // 改为15个回款日
+                gameConfig.targetAssets = 8000;
+                addLog("目标：15个回款周期内总资产达 $8,000", "info");
+            } else if (mode === 'hard') {
+                gameConfig.maxPayouts = 30; // 改为30个回款日
+                gameConfig.targetAssets = 20000;
+                addLog("目标：30个回款周期内总资产达 $20,000", "info");
+            } else {
+                gameConfig.maxPayouts = Infinity;
+                gameConfig.targetAssets = Infinity;
+                addLog("目标：尽可能生存下去！", "info");
+            }
+            
+            updateUI();
+        }
+
+        // --- 渲染棋盘 (8x8 逻辑) ---
+        function renderBoard() {
+            const board = document.getElementById('board');
+            
+            const playerToken = document.getElementById('player');
+            const centerArea = document.querySelector('.center-area');
+            
+            board.innerHTML = '';
+            
+            for (let i = 0; i < TOTAL_TILES; i++) {
+                const tileData = mapData[i];
+                const el = document.createElement('div');
+                
+                let col, row;
+                if (i <= 7) { row = 1; col = i + 1; } // Top
+                else if (i <= 14) { col = 8; row = i - 7 + 1; } // Right
+                else if (i <= 21) { row = 8; col = 8 - (i - 14); } // Bottom
+                else { col = 1; row = 8 - (i - 21); } // Left
+
+                el.style.gridColumn = col;
+                el.style.gridRow = row;
+                
+                let typeClass = 'tile-prop';
+                if (tileData.type === 'START') typeClass = 'tile-start';
+                else if (tileData.type === 'JAIL' || tileData.type === 'GO_TO_JAIL') typeClass = 'tile-jail';
+                else if (tileData.type === 'CHANCE') typeClass = 'tile-chance';
+                else if (tileData.type === 'TAX') typeClass = 'tile-tax';
+                else if (tileData.type === 'FREE') typeClass = 'tile-chance'; 
+                else if (tileData.type === 'BACK') typeClass = 'tile-tax';
+                else if (tileData.type === 'BONUS') typeClass = 'tile-event';
+
+                el.className = `tile ${typeClass}`;
+                el.id = `tile-${i}`;
+
+                let content = `<i class="fas ${tileData.icon} mb-1 opacity-80 text-lg"></i>`;
+                content += `<div class="tile-name">${tileData.name}</div>`;
+                
+                if (tileData.type === 'PROP') {
+                    content += `<div class="tile-price">$${tileData.cost}</div>`;
+                    content += `<div class="level-stars" id="stars-${i}"></div>`;
+                }
+
+                el.innerHTML = content;
+                board.appendChild(el);
+            }
+            
+            if (centerArea) board.appendChild(centerArea);
+            if (playerToken) board.appendChild(playerToken); 
+        }
+
+        // --- 核心逻辑 ---
+
+        function rollDice() {
+            if (isAnimating || player.suspended > 0) {
+                if (player.suspended > 0) {
+                    addLog(`账号审核中，暂停 ${player.suspended} 回合...`, 'bad');
+                    player.suspended--;
+                    updateUI();
+                }
+                return;
+            }
+
+            isAnimating = true;
+            const diceBox = document.getElementById('dice-btn');
+            const hintEl = document.getElementById('action-hint');
+            
+            diceBox.classList.add('dice-rolling');
+            hintEl.innerText = "Rolling...";
+            
+            let rolls = 0;
+            const rollInterval = setInterval(() => {
+                const tempVal = Math.floor(Math.random() * 6) + 1;
+                diceBox.innerHTML = `<i class="fas fa-dice-${['one','two','three','four','five','six'][tempVal-1]}"></i>`;
+                rolls++;
+                if (rolls > 10) {
+                    clearInterval(rollInterval);
+                    diceBox.classList.remove('dice-rolling');
+                    const steps = Math.floor(Math.random() * 6) + 1;
+                    
+                    diceBox.innerHTML = `<i class="fas fa-dice-${['one','two','three','four','five','six'][steps-1]}"></i>`;
+                    
+                    hintEl.innerText = `${steps} 点`;
+                    hintEl.classList.remove('animate-pulse', 'text-gray-400');
+                    hintEl.classList.add('text-yellow-400', 'font-bold', 'text-lg');
+                    
+                    movePlayerLogic(steps);
+                }
+            }, 50);
+        }
+
+        function movePlayerLogic(steps) {
+            let currentStep = 0;
+            
+            const stepInterval = setInterval(() => {
+                player.pos = (player.pos + 1) % TOTAL_TILES;
+                movePlayerToken(player.pos);
+                
+                if (player.pos === 0) {
+                    handlePassStart();
+                }
+
+                currentStep++;
+                if (currentStep >= steps) {
+                    clearInterval(stepInterval);
+                    isAnimating = false;
+                    handleTileArrival(player.pos);
+                    
+                    setTimeout(() => {
+                        const hintEl = document.getElementById('action-hint');
+                        if(document.getElementById('modal').classList.contains('hidden')) {
+                            hintEl.innerText = "点击骰子";
+                            hintEl.classList.add('animate-pulse', 'text-gray-400');
+                            hintEl.classList.remove('text-yellow-400', 'font-bold', 'text-xs'); 
+                        }
+                    }, 1500);
+                    
+                    // Win Check (Anytime)
+                    checkWinOrLose();
+                }
+            }, 300);
+        }
+
+        function movePlayerToken(index) {
+            const tile = document.getElementById(`tile-${index}`);
+            const token = document.getElementById('player');
+            const board = document.getElementById('board');
+            
+            if (!tile || !board || !token) return;
+
+            const tileRect = tile.getBoundingClientRect();
+            const boardRect = board.getBoundingClientRect();
+            
+            const top = tileRect.top - boardRect.top + (tileRect.height/2 - 16);
+            const left = tileRect.left - boardRect.left + (tileRect.width/2 - 16);
+
+            token.style.transform = `translate(${left}px, ${top}px)`;
+        }
+
+        // --- 事件处理 ---
+
+        function handlePassStart() {
+            // Increment payouts
+            player.payoutCount++;
+            
+            let totalIncome = player.baseSalary;
+            mapData.forEach(t => {
+                if (t.type === 'PROP' && t.owner === 'player') {
+                    totalIncome += Math.floor(t.income * (1 + t.level * 0.5));
+                }
+            });
+            player.cash += totalIncome;
+            addLog(`回款日！入账 +$${totalIncome}`, 'good');
+            updateUI();
+            showToast(`回款日到账 +$${totalIncome}`);
+            
+            // Check Lose Condition (Payout limit reached)
+            checkWinOrLose();
+        }
+
+        function checkWinOrLose() {
+            if (gameConfig.mode === 'endless') return;
+
+            // Check Win
+            if (player.assets >= gameConfig.targetAssets) {
+                showModal(
+                    '恭喜上市！🎉',
+                    `在第 ${player.payoutCount} 个回款周期，你的总资产达到了 <span class="text-green-500 font-bold">$${player.assets}</span>！<br>你已经是类目王者了！`,
+                    [{ text: '返回主菜单', class: 'bg-green-500 text-white', action: () => location.reload() }]
+                );
+                return;
+            }
+
+            // Check Lose (Only after passing start, logic inside handlePassStart incremented it)
+            if (player.payoutCount >= gameConfig.maxPayouts && player.assets < gameConfig.targetAssets) {
+                showModal(
+                    '对赌失败 😭',
+                    `时间到！经过 ${gameConfig.maxPayouts} 个回款周期，总资产 $${player.assets} 未达标。<br>投资人撤资了。`,
+                    [{ text: '再试一次', class: 'bg-orange-500 text-white', action: () => location.reload() }]
+                );
+            }
+        }
+
+        function handleTileArrival(index) {
+            const tile = mapData[index];
+
+            if (tile.type === 'PROP') {
+                if (tile.owner === null) {
+                    const canAfford = player.cash >= tile.cost;
+                    const costClass = canAfford ? 'text-gray-600' : 'text-red-500 font-bold';
+                    
+                    showModal(
+                        '发现蓝海新品', 
+                        `产品：${tile.name}<br>首批备货成本：<span class="${costClass}">$${tile.cost}</span><br>预计单次收益：$${tile.income}`,
+                        [
+                            { text: '上架销售 (Buy)', class: 'bg-green-500 text-white hover:bg-green-600', action: () => buyProp(index) },
+                            { text: '放弃机会', class: 'bg-gray-200 text-gray-700 hover:bg-gray-300', action: closeModal }
+                        ]
+                    );
+                } else {
+                    const upgradeCost = Math.floor(tile.cost * 0.5);
+                    const canAfford = player.cash >= upgradeCost;
+                    const costClass = canAfford ? 'text-gray-600' : 'text-red-500 font-bold';
+
+                    showModal(
+                        '优化运营 (PPC)', 
+                        `产品：${tile.name}<br>当前等级：Lv.${tile.level}<br>投入广告费 <span class="${costClass}">$${upgradeCost}</span> 提升排名？`,
+                        [
+                            { text: '加大投放 (Upgrade)', class: 'bg-blue-500 text-white hover:bg-blue-600', action: () => upgradeProp(index) },
+                            { text: '维持现状', class: 'bg-gray-200 text-gray-700 hover:bg-gray-300', action: closeModal }
+                        ]
+                    );
+                }
+            } else if (tile.type === 'TAX') {
+                player.cash -= tile.cost;
+                addLog(`支付${tile.name}: -$${tile.cost}`, 'bad');
+                checkBankruptcy();
+            } else if (tile.type === 'CHANCE') {
+                triggerChance();
+            } else if (tile.type === 'GO_TO_JAIL') {
+                addLog('遭遇恶意投诉！账号审核中...', 'bad');
+                player.pos = 7; 
+                movePlayerToken(7);
+                player.suspended = 2; 
+            } else if (tile.type === 'JAIL') {
+                addLog('路过审核部，虚惊一场。', 'info');
+            } else if (tile.type === 'FREE') {
+                const bonus = Math.floor(Math.random() * 500) + 300; 
+                player.cash += bonus;
+                addLog(`Prime Day 爆单！流量免费，入账 +$${bonus}`, 'good');
+                showModal(
+                    'Prime Day 爆单',
+                    `大促流量袭来！你的产品销量暴涨。<br>获得额外收益 <span class="text-green-600 font-bold">$${bonus}</span>`,
+                    [{ text: '开心收钱', class: 'bg-green-500 text-white hover:bg-green-600', action: closeModal }]
+                );
+            } else if (tile.type === 'BACK') {
+                addLog('工厂发货延期，后退 2 格', 'bad');
+                setTimeout(() => {
+                    let newPos = player.pos - 2;
+                    if(newPos < 0) newPos += TOTAL_TILES;
+                    player.pos = newPos;
+                    movePlayerToken(newPos);
+                    setTimeout(() => handleTileArrival(newPos), 500);
+                }, 800);
+            } else if (tile.type === 'BONUS') {
+                const bonus = 1000;
+                player.cash += bonus;
+                addLog(`获得天使融资：+$${bonus}`, 'good');
+                showModal(
+                    '天使轮融资',
+                    `投资人看好你的项目！<br>获得融资 <span class="text-green-600 font-bold">$${bonus}</span>`,
+                    [{ text: '收下资金', class: 'bg-yellow-500 text-white hover:bg-yellow-600', action: closeModal }]
+                );
+            }
+            updateUI();
+        }
+
+        // --- 核心操作 ---
+
+        function buyProp(index) {
+            const tile = mapData[index];
+            if (player.cash >= tile.cost) {
+                player.cash -= tile.cost;
+                tile.owner = 'player';
+                addLog(`成功上架：${tile.name} (-$${tile.cost})`, 'good');
+                
+                const el = document.getElementById(`tile-${index}`);
+                const mark = document.createElement('div');
+                mark.className = 'owned-mark';
+                el.appendChild(mark);
+                el.style.borderColor = '#FF9900';
+                
+                closeModal();
+                updateUI();
+                checkWinOrLose();
+            } else {
+                showToast(`资金不足！缺 $${tile.cost - player.cash}`, "error");
+            }
+        }
+
+        function upgradeProp(index) {
+            const tile = mapData[index];
+            const cost = Math.floor(tile.cost * 0.5);
+            if (player.cash >= cost) {
+                player.cash -= cost;
+                tile.level++;
+                addLog(`产品 ${tile.name} 升级到 Lv.${tile.level} (-$${cost})`, 'good');
+                
+                const stars = document.getElementById(`stars-${index}`);
+                stars.innerHTML = '★'.repeat(tile.level);
+                
+                closeModal();
+                updateUI();
+                checkWinOrLose();
+            } else {
+                showToast(`资金不足！缺 $${cost - player.cash}`, "error");
+            }
+        }
+
+        function triggerChance() {
+            const events = [
+                { text: "listing 被恶搞变狗，损失 $200", val: -200 },
+                { text: "获得 Amazing Choice 标，奖励 $300", val: 300 },
+                { text: "仓库丢件赔偿，获得 $150", val: 150 },
+                { text: "遭遇 1 星差评，销量下滑，损失 $100", val: -100 },
+                { text: "竞争对手断货，你爆单了！奖励 $500", val: 500 },
+                { text: "海运费暴涨，额外支付 $250", val: -250 }
+            ];
+            const evt = events[Math.floor(Math.random() * events.length)];
+            
+            showModal(
+                '运营事件',
+                `<div class="text-3xl mb-3">${evt.val > 0 ? '😆' : '😭'}</div>${evt.text}`,
+                [{ text: '确定', class: 'bg-orange-500 text-white hover:bg-orange-600', action: () => {
+                    player.cash += evt.val;
+                    const sign = evt.val > 0 ? '+' : '';
+                    addLog(evt.text + ` (${sign}$${evt.val})`, evt.val > 0 ? 'good' : 'bad');
+                    checkBankruptcy();
+                    closeModal();
+                    updateUI();
+                    checkWinOrLose();
+                }}]
+            );
+        }
+
+        // --- 重置功能 ---
+        function resetGame() {
+            if(!confirm("确定要重新开始吗？当前进度将丢失。")) return;
+
+            // Reset Player
+            player = {
+                pos: 0,
+                cash: 2000,
+                baseSalary: 200,
+                suspended: 0,
+                assets: 2000,
+                payoutCount: 0
+            };
+
+            // Reset Map Data
+            mapData.forEach(tile => {
+                if (tile.type === 'PROP') {
+                    tile.owner = null;
+                    tile.level = 0;
+                }
+            });
+
+            // UI 重置
+            movePlayerToken(0);
+            document.getElementById('player').classList.add('hidden'); 
+
+            renderBoard(); 
+            
+            document.getElementById('game-log').innerHTML = '<div class="log-item log-info">欢迎来到 Amazing 大富翁！</div><div class="log-item log-info">请选择游戏模式...</div>';
+
+            document.getElementById('intro-modal').classList.remove('hidden');
+            
+            updateUI(); 
+        }
+
+        // --- UI & Helpers ---
+
+        function updateUI() {
+            // 计算资产
+            let propertyValue = 0;
+            let income = player.baseSalary;
+            
+            mapData.forEach(t => {
+                if (t.owner === 'player') {
+                    propertyValue += t.cost;
+                    income += Math.floor(t.income * (1 + t.level * 0.5));
+                }
+            });
+            player.assets = player.cash + propertyValue;
+
+            // 格式化数字，k为单位
+            const fmt = (n) => n >= 1000 ? (n/1000).toFixed(1) + 'k' : n;
+
+            document.getElementById('cash-display').innerText = `$${fmt(player.cash)}`;
+            document.getElementById('income-display').innerText = `+$${fmt(income)}`;
+            document.getElementById('target-main-display').innerText = `$${fmt(player.assets)}`;
+
+            // 更新进度条/目标
+            const targetLabel = document.getElementById('target-label');
+            const turnProgress = document.getElementById('turn-progress');
+            const turnDisplay = document.getElementById('turn-display');
+
+            if (gameConfig.mode === 'endless') {
+                targetLabel.innerText = "总资产 (无限)";
+                turnProgress.style.width = "100%";
+                turnDisplay.innerText = `${player.payoutCount}`;
+            } else {
+                targetLabel.innerText = `目标: $${fmt(gameConfig.targetAssets)}`;
+                const pct = Math.min(100, (player.payoutCount / gameConfig.maxPayouts) * 100);
+                turnProgress.style.width = `${pct}%`;
+                turnDisplay.innerText = `${player.payoutCount}/${gameConfig.maxPayouts}`;
+            }
+        }
+
+        function addLog(msg, type = 'info') {
+            const box = document.getElementById('game-log');
+            if(box) {
+                const div = document.createElement('div');
+                div.className = `log-item log-${type}`;
+                div.innerText = msg;
+                box.prepend(div); 
+            }
+        }
+
+        function showModal(title, desc, actions) {
+            const m = document.getElementById('modal');
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-desc').innerHTML = desc;
+            
+            const actionBox = document.getElementById('modal-actions');
+            actionBox.innerHTML = '';
+            
+            actions.forEach(act => {
+                const btn = document.createElement('button');
+                btn.className = `w-full py-2.5 px-4 rounded text-sm font-bold transition-colors ${act.class}`;
+                btn.innerText = act.text;
+                btn.onclick = () => {
+                     act.action();
+                     const hintEl = document.getElementById('action-hint');
+                     if(hintEl) {
+                        hintEl.innerText = "点击骰子";
+                        hintEl.classList.add('animate-pulse', 'text-gray-400');
+                        hintEl.classList.remove('text-yellow-400', 'font-bold', 'text-xs');
+                     }
+                };
+                actionBox.appendChild(btn);
+            });
+            
+            m.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            const hintEl = document.getElementById('action-hint');
+            if(hintEl) {
+                hintEl.innerText = "点击骰子";
+                hintEl.classList.add('animate-pulse', 'text-gray-400');
+                hintEl.classList.remove('text-yellow-400', 'font-bold', 'text-xs'); 
+            }
+        }
+
+        function checkBankruptcy() {
+            if (player.cash < 0) {
+                showModal(
+                    '资金链断裂',
+                    '很遗憾，你的店铺倒闭了。<br>请大侠重新来过！',
+                    [{ text: '重新开店', class: 'bg-red-500 text-white', action: () => location.reload() }]
+                );
+            }
+        }
+        
+        function showToast(msg, type='info') {
+            let toast = document.getElementById('toast-msg');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast-msg';
+                toast.className = 'toast';
+                document.body.appendChild(toast);
+            }
+            
+            toast.innerText = msg;
+            toast.className = 'toast show'; 
+            if (type === 'error') toast.classList.add('error');
+            
+            if(window.toastTimeout) clearTimeout(window.toastTimeout);
+            
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => { toast.classList.remove('error'); }, 300); 
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
