@@ -440,8 +440,19 @@
         }
     </style>
     <script>
-        window.SUPABASE_URL = '__SUPABASE_URL__';
-        window.SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+        window.SUPABASE_URL = '';
+        window.SUPABASE_ANON_KEY = '';
+        
+        async function loadSupabaseConfig() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                const config = await response.json();
+                window.SUPABASE_URL = config.supabaseUrl;
+                window.SUPABASE_ANON_KEY = config.supabaseAnonKey;
+            } catch (error) {
+                console.warn('加载 Supabase 配置失败，使用本地弹幕模式');
+            }
+        }
     </script>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen relative">
@@ -662,9 +673,12 @@
             }, 300);
         }
 
-        loadDanmakuData();
-        setInterval(updateCountdown, 1000);
-        updateCountdown();
+        (async function init() {
+            await loadSupabaseConfig();
+            await loadDanmakuData();
+            setInterval(updateCountdown, 1000);
+            updateCountdown();
+        })();
 
         /**
          * 模拟在线人数
