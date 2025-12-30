@@ -725,10 +725,17 @@
 
                 if (error) throw error;
 
-                data.reverse().forEach((danmaku, index) => {
+                const count = Math.floor(Math.random() * 4) + 5;
+                const shuffled = data.sort(() => Math.random() - 0.5);
+                const selected = shuffled.slice(0, count);
+
+                let delay = 0;
+                selected.forEach((danmaku) => {
+                    const randomDelay = Math.random() * 2000 + 1000;
+                    delay += randomDelay;
                     setTimeout(() => {
-                        createDanmaku(danmaku.text, danmaku.is_highlight);
-                    }, index * 1500);
+                        createDanmaku(danmaku.text, danmaku.is_highlight, true);
+                    }, delay);
                 });
             } catch (error) {
                 console.error('加载历史弹幕失败:', error);
@@ -747,7 +754,7 @@
                     const msg = defaultMessages[Math.floor(Math.random() * defaultMessages.length)];
                     createDanmaku(msg);
                 }
-            }, 4000);
+            }, 8000);
         }
 
         function processRealTimeDanmaku() {
@@ -760,7 +767,7 @@
             setTimeout(() => {
                 isProcessingQueue = false;
                 processRealTimeDanmaku();
-            }, 2000);
+            }, 4000);
         }
 
         async function initSupabase() {
