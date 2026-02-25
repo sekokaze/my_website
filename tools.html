@@ -249,10 +249,27 @@
                 <h2 class="text-2xl font-bold font-tech">AI 创作类</h2>
                 <span class="category-badge bg-purple-500/10 border border-purple-500/30 text-purple-400">
                     <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    2 个工具
+                    3 个工具
                 </span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <i class="fa-solid fa-images text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3 group-hover:text-emerald-400 transition-colors">亚马逊主图生成工作流</h3>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
+                        一站式亚马逊图片自动化工作流：竞品图片分析、产品建模、作图需求生成、提示词优化，一键产出7-8张高质量主图与副图。
+                    </p>
+                    <ul class="text-xs text-gray-500 mb-8 space-y-2">
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> COSMO竞品图片分析</li>
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 产品建模+主图生成</li>
+                    </ul>
+                    <button onclick="navigateTo('amazon-pic-workflow')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #10b981;">
+                        开始生成 <i class="fa-solid fa-wand-magic-sparkles ml-2"></i>
+                    </button>
+                </div>
+
                 <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
                     <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
                         <i class="fa-solid fa-video text-white text-2xl"></i>
@@ -459,6 +476,10 @@
                 case 'banana-ai':
                     toolName = "Banana AI";
                     url = 'tools/banana-ai.html';
+                    break;
+                case 'amazon-pic-workflow':
+                    toolName = "亚马逊主图生成工作流";
+                    url = 'https://8jmxn22r3p.coze.site';
                     break;
                 case 'ads-manager':
                     toolName = "广告批量创建系统";

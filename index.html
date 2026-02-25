@@ -302,26 +302,23 @@
                 </button>
             </div>
 
-            <!-- 工具 3: Banana AI (新增) -->
+            <!-- 工具 3: 亚马逊主图生成工作流 -->
             <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
-                <!-- 黄色渐变背景 -->
-                <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                    <!-- 使用 Banana 图标 (SVG) -->
-                    <svg class="w-8 h-8 text-white fill-current" viewBox="0 0 512 512">
-                        <path d="M428.3 391.6c-7.2-5.7-16-8.3-24.8-7-78.2 11.2-151.7-14.5-202.4-64.8-51.5-51-69.8-124.5-57.5-204.9 1.2-8.1-1.3-16.4-7-22.9-5.7-6.6-14.4-10.1-23.1-9.4-46.7 4.1-82.9 44.8-79.8 91.9 3.7 57.1 27.2 109.2 65.7 149.3 41.2 42.9 96.5 71.7 154.5 81.6 47.5 8.1 91.8-9.1 127.4-37.9 7.2-5.8 10-15.6 6.2-24.3-3.7-8.8-12.4-14.1-21.6-12.5-54.8 9.3-102.4-5-137.3-33.5-32.9-26.9-53.1-67.8-56.4-112.7-.5-7 5.2-12.8 12.2-12.8 6.4 0 11.9 4.8 12.7 11.2 2.8 38 19.8 72.8 47.7 95.5 29.4 24.1 69.6 36.3 115.8 28.4 9-1.6 18.1 1.1 24.8 7.2 6.7 6.2 9.9 15.5 8.3 24.6z"/>
-                    </svg>
+                <!-- 绿色渐变背景 -->
+                <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                    <i class="fa-solid fa-images text-white text-2xl"></i>
                 </div>
-                <h3 class="text-2xl font-bold mb-3 group-hover:text-yellow-400 transition-colors">Nano Banana Pro</h3>
+                <h3 class="text-2xl font-bold mb-3 group-hover:text-emerald-400 transition-colors">亚马逊主图生成工作流</h3>
                 <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
-                    下一代商业视觉生成助手。无需摄影棚，通过AI精准控制光影与材质，低成本批量产出电商级产品图与营销海报。
+                    一站式亚马逊图片自动化工作流：竞品图片分析、产品建模、作图需求生成、提示词优化，一键产出7-8张高质量主图与副图。
                 </p>
                 <ul class="text-xs text-gray-500 mb-8 space-y-2">
-                    <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 商业级视觉直出</li>
-                    <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 场景化营销生成</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> COSMO竞品图片分析</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 产品建模+主图生成</li>
                 </ul>
-                <!-- 自定义按钮颜色 (黄色) -->
-                <button onclick="navigateTo('banana-ai')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #fbbf24;">
-                    立即体验 <i class="fa-solid fa-bolt ml-2"></i>
+                <!-- 自定义按钮颜色 (绿色) -->
+                <button onclick="navigateTo('amazon-pic-workflow')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #10b981;">
+                    开始生成 <i class="fa-solid fa-wand-magic-sparkles ml-2"></i>
                 </button>
             </div>
 
@@ -412,9 +409,9 @@
                     toolName = "FBA 运费计算器";
                     url = '/tools/fba-calculator.html';
                     break;
-                case 'banana-ai':
-                    toolName = "Banana AI";
-                    url = 'tools/banana-ai.html';
+                case 'amazon-pic-workflow':
+                    toolName = "亚马逊主图生成工作流";
+                    url = 'https://8jmxn22r3p.coze.site';
                     break;
                 case 'ads-manager':
                     toolName = "广告批量创建系统";
