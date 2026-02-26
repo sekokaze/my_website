@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>亚马逊主图生成工作流 - Brainyxia</title>
+    <!-- 引入 Tailwind CSS 进行快速样式构建 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & Orbitron -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 全局样式与自定义动画 */
+        :root {
+            --primary-glow: #10b981;
+            --secondary-glow: #06b6d4;
+            --bg-color: #0b0d17;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: #ffffff;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        /* 科技感字体 */
+        .font-tech {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* 背景 Canvas */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        /* 霓虹按钮 */
+        .neon-btn {
+            background: transparent;
+            border: 1px solid var(--primary-glow);
+            color: var(--primary-glow);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .neon-btn::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 100%;
+            background: var(--primary-glow);
+            z-index: -1;
+            transition: all 0.3s ease;
+        }
+
+        .neon-btn:hover {
+            color: #000;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .neon-btn:hover::after {
+            width: 100%;
+        }
+
+        /* 标题渐变 */
+        .gradient-text {
+            background: linear-gradient(to right, #10b981, #06b6d4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0d17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-glow);
+        }
+
+        /* iframe 容器 */
+        .iframe-container {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 80px);
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* 加载动画 */
+        .loader-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .loader-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(16, 185, 129, 0.2);
+            border-top-color: #10b981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            margin-top: 20px;
+            color: #10b981;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            #particle-canvas {
+                opacity: 0.3;
+            }
+
+            .neon-btn:hover {
+                color: var(--primary-glow);
+                background: transparent;
+            }
+
+            .neon-btn:hover::after {
+                width: 0%;
+            }
+
+            .iframe-container {
+                height: calc(100vh - 60px);
+            }
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- 动态背景 -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- 导航栏 -->
+    <nav class="w-full py-4 px-6 flex justify-between items-center z-50 border-b border-white/10 bg-black/40 backdrop-blur-md sticky top-0">
+        <div class="flex items-center gap-3">
+            <a href="../index.html" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <i class="fa-solid fa-brain text-emerald-400 text-xl animate-pulse"></i>
+                <span class="font-tech text-xl font-bold tracking-wider text-white">Brainyxia</span>
+            </a>
+            <span class="text-gray-600 mx-2">/</span>
+            <span class="text-emerald-400 font-semibold text-sm">亚马逊主图生成工作流</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="../index.html" class="neon-btn py-2 px-4 rounded font-bold text-xs flex items-center gap-2" style="--primary-glow: #10b981;">
+                <i class="fa-solid fa-arrow-left"></i>
+                返回首页
+            </a>
+        </div>
+    </nav>
+
+    <!-- iframe 嵌入区域 -->
+    <div class="iframe-container">
+        <!-- 加载动画 -->
+        <div class="loader-overlay" id="loader">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">LOADING WORKFLOW...</div>
+        </div>
+        <!-- iframe -->
+        <iframe src="https://8jmxn22r3p.coze.site/" id="workflow-iframe" onload="hideLoader()"></iframe>
+    </div>
+
+    <script>
+        // 隐藏加载动画
+        function hideLoader() {
+            const loader = document.getElementById('loader');
+            loader.classList.add('hidden');
+        }
+
+        // 备用：如果 iframe 加载时间过长，也隐藏 loader
+        setTimeout(() => {
+            const loader = document.getElementById('loader');
+            if (!loader.classList.contains('hidden')) {
+                loader.classList.add('hidden');
+            }
+        }, 8000);
+
+        /**
+         * 粒子网络背景动画 (Canvas)
+         */
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let particles = [];
+
+        const particleCount = 40;
+        const connectionDistance = 120;
+
+        window.addEventListener('resize', resize);
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.3;
+                this.vy = (Math.random() - 0.5) * 0.3;
+                this.size = Math.random() * 2 + 1;
+                this.color = Math.random() > 0.5 ? '#10b981' : '#06b6d4';
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        function init() {
+            particles = [];
+            resize();
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+
+                for (let j = i; j < particles.length; j++) {
+                    let dx = particles[i].x - particles[j].x;
+                    let dy = particles[i].y - particles[j].y;
+                    let distance = Math.sqrt(dx*dx + dy*dy);
+
+                    if (distance < connectionDistance) {
+                        ctx.beginPath();
+                        let opacity = 1 - (distance / connectionDistance);
+                        ctx.strokeStyle = `rgba(16, 185, 129, ${opacity * 0.15})`;
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
