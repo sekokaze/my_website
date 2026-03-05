@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级A+图片裁剪与压缩工具</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+    
+    <!-- Google Fonts (Inter + Noto Sans SC) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; 
+        }
+
+        .cropper-view-box,
+        .cropper-face {
+            border-radius: 0;
+            outline: 1px solid rgba(255, 255, 255, 0.75);
+        }
+        
+        /* Cropper container visual improvements */
+        .img-container {
+            height: 100%;
+            width: 100%;
+            background-color: #1a1a1a; /* Slightly lighter than pure black */
+            background-image: 
+                linear-gradient(45deg, #262626 25%, transparent 25%), 
+                linear-gradient(-45deg, #262626 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #262626 75%), 
+                linear-gradient(-45deg, transparent 75%, #262626 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        
+        /* Crucial Fix: Add a distinct border/shadow to the image canvas itself 
+           so the user can see where the image ends and the background begins.
+        */
+        .cropper-canvas {
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5), 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        .active-thumb {
+            border-color: #3b82f6 !important;
+            opacity: 1 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-16 bg-slate-800 border-b border-slate-700 flex items-center justify-between px-6 shrink-0 z-10 shadow-md">
+        <div class="flex items-center gap-3">
+            <i data-lucide="scissors" class="text-blue-500 w-6 h-6"></i>
+            <h1 class="text-lg font-bold tracking-wide text-white">ImgCut Pro <span class="text-xs font-normal text-slate-400 bg-slate-900 px-2 py-0.5 rounded ml-2">A+ Edition</span></h1>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <div class="hidden md:flex text-xs text-slate-400 gap-4 mr-4 border-r border-slate-600 pr-4">
+                <span class="flex items-center gap-1"><kbd class="bg-slate-700 px-1 rounded">↑↓←→</kbd> 移动选区</span>
+                <span class="flex items-center gap-1"><kbd class="bg-slate-700 px-1 rounded">Shift</kbd> + 方向键 加速</span>
+            </div>
+            <label for="fileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-blue-900/20">
+                <i data-lucide="upload" class="w-4 h-4"></i>
+                上传图片 (支持多选)
+            </label>
+            <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Sidebar: Thumbnail List -->
+        <aside class="w-64 bg-slate-900 border-r border-slate-700 flex flex-col shrink-0">
+            <div class="p-4 border-b border-slate-800">
+                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">图片列表</h2>
+            </div>
+            <div id="thumbnailList" class="flex-1 overflow-y-auto p-3 space-y-3">
+                <!-- Empty State -->
+                <div class="text-center mt-10 text-slate-500 text-sm flex flex-col items-center">
+                    <i data-lucide="image" class="w-8 h-8 mb-2 opacity-50"></i>
+                    <p>暂无图片</p>
+                    <p class="text-xs mt-1">请先上传</p>
+                </div>
+            </div>
+            <div class="p-3 bg-slate-900 border-t border-slate-800 text-xs text-center text-slate-500">
+                支持 JPG, PNG, WEBP
+            </div>
+        </aside>
+
+        <!-- Center: Cropper Area -->
+        <div class="flex-1 relative flex flex-col bg-black">
+            <div class="flex-1 relative overflow-hidden" id="cropperWrapper">
+                <div class="img-container flex items-center justify-center h-full w-full">
+                    <img id="image" src="" alt="Work Area" class="max-w-full hidden">
+                    <div id="placeholderText" class="text-slate-500 flex flex-col items-center select-none">
+                        <i data-lucide="crop" class="w-12 h-12 mb-4 opacity-20"></i>
+                        <span class="text-lg font-medium text-slate-400">准备就绪</span>
+                        <span class="text-sm text-slate-600 mt-2">请从左侧选择一张图片开始编辑</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Info Bar (Crop Info) -->
+            <div class="h-8 bg-slate-900/80 backdrop-blur text-xs text-slate-400 flex items-center justify-between px-4 absolute bottom-0 w-full pointer-events-none z-10 border-t border-white/10">
+                <div class="flex gap-4">
+                    <span>原始: <span id="originalSize" class="text-slate-200">-</span></span>
+                    <span>当前裁剪: <span id="cropSize" class="text-blue-300 font-mono">-</span></span>
+                </div>
+                <div id="zoomInfo">缩放: 100%</div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar: Controls -->
+        <aside class="w-80 bg-slate-800 border-l border-slate-700 flex flex-col shrink-0 overflow-y-auto">
+            
+            <!-- Section: Presets -->
+            <div class="p-5 border-b border-slate-700">
+                <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="monitor-smartphone" class="w-4 h-4 text-blue-400"></i> 
+                    裁剪预设
+                </h3>
+                
+                <div class="grid grid-cols-1 gap-3">
+                    <button onclick="setPreset('desktop')" id="btnDesktop" class="group relative flex items-center justify-between p-3 rounded-lg border border-slate-600 hover:border-blue-500 hover:bg-slate-700 transition-all text-left">
+                        <div>
+                            <div class="text-sm font-medium text-slate-200">电脑端 Banner</div>
+                            <div class="text-xs text-slate-400 mt-0.5">1464 x 600 px</div>
+                        </div>
+                        <div class="w-8 h-4 border-2 border-slate-500 rounded-sm bg-slate-600/50 group-hover:border-blue-400 transition-colors" style="aspect-ratio: 1464/600;"></div>
+                    </button>
+
+                    <button onclick="setPreset('mobile')" id="btnMobile" class="group relative flex items-center justify-between p-3 rounded-lg border border-slate-600 hover:border-blue-500 hover:bg-slate-700 transition-all text-left">
+                        <div>
+                            <div class="text-sm font-medium text-slate-200">手机端 Cover</div>
+                            <div class="text-xs text-slate-400 mt-0.5">600 x 450 px</div>
+                        </div>
+                        <div class="w-6 h-4 border-2 border-slate-500 rounded-sm bg-slate-600/50 group-hover:border-blue-400 transition-colors" style="aspect-ratio: 600/450;"></div>
+                    </button>
+
+                    <button onclick="setPreset('square')" id="btnSquare" class="group relative flex items-center justify-between p-3 rounded-lg border border-slate-600 hover:border-blue-500 hover:bg-slate-700 transition-all text-left">
+                        <div>
+                            <div class="text-sm font-medium text-slate-200">方形 (电商主图)</div>
+                            <div class="text-xs text-slate-400 mt-0.5">1600 x 1600 px</div>
+                        </div>
+                        <div class="w-5 h-5 border-2 border-slate-500 rounded-sm bg-slate-600/50 group-hover:border-blue-400 transition-colors" style="aspect-ratio: 1/1;"></div>
+                    </button>
+
+                    <button onclick="setPreset('portrait')" id="btnPortrait" class="group relative flex items-center justify-between p-3 rounded-lg border border-slate-600 hover:border-blue-500 hover:bg-slate-700 transition-all text-left">
+                        <div>
+                            <div class="text-sm font-medium text-slate-200">竖屏 (海报/手机)</div>
+                            <div class="text-xs text-slate-400 mt-0.5">1200 x 1600 px</div>
+                        </div>
+                        <div class="w-4 h-6 border-2 border-slate-500 rounded-sm bg-slate-600/50 group-hover:border-blue-400 transition-colors" style="aspect-ratio: 1200/1600;"></div>
+                    </button>
+                    
+                    <button onclick="setPreset('free')" id="btnFree" class="text-xs text-slate-400 hover:text-white underline text-center mt-1">
+                        解锁比例 (自由裁剪)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Section: Output Settings -->
+            <div class="p-5 border-b border-slate-700">
+                <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="settings-2" class="w-4 h-4 text-blue-400"></i> 
+                    输出设置
+                </h3>
+
+                <!-- Resize Mode -->
+                <div class="mb-5">
+                    <label class="text-xs text-slate-400 block mb-2">尺寸处理策略</label>
+                    <select id="resizeMode" class="w-full bg-slate-900 border border-slate-600 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                        <option value="resize">强制缩放到目标尺寸 (推荐)</option>
+                        <option value="original">保持原始清晰度/分辨率</option>
+                    </select>
+                    <p class="text-[10px] text-slate-500 mt-2 px-1 leading-relaxed">
+                        <span id="hintResize" class="block">图片将精确调整为预设像素 (如 1464x600)，适合直接上传系统。</span>
+                        <span id="hintOriginal" class="hidden">图片将保留裁剪区域的实际像素，可能大于预设尺寸，但清晰度最高。</span>
+                    </p>
+                </div>
+
+                <!-- Quality Slider -->
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label class="text-xs text-slate-400">压缩质量 (JPEG)</label>
+                        <span id="qualityValue" class="text-xs font-mono text-blue-400">90%</span>
+                    </div>
+                    <input type="range" id="qualityRange" min="10" max="100" value="90" class="w-full h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                </div>
+            </div>
+
+            <!-- Action -->
+            <div class="p-5 mt-auto bg-slate-800">
+                <button onclick="downloadImage()" id="downloadBtn" disabled class="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg shadow-lg transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    下载当前图片
+                </button>
+                <div id="fileInfo" class="text-center mt-2 text-xs text-slate-500 h-4"></div>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Cropper.js Script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // State
+        let cropper = null;
+        let files = [];
+        let currentIndex = -1;
+        let currentPreset = { name: 'desktop', width: 1464, height: 600, ratio: 1464/600 };
+
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const thumbnailList = document.getElementById('thumbnailList');
+        const imageElement = document.getElementById('image');
+        const placeholderText = document.getElementById('placeholderText');
+        const originalSizeEl = document.getElementById('originalSize');
+        const cropSizeEl = document.getElementById('cropSize');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resizeModeSelect = document.getElementById('resizeMode');
+        const hintResize = document.getElementById('hintResize');
+        const hintOriginal = document.getElementById('hintOriginal');
+        const qualityRange = document.getElementById('qualityRange');
+        const qualityValue = document.getElementById('qualityValue');
+
+        // Presets Configuration
+        const PRESETS = {
+            desktop: { width: 1464, height: 600, ratio: 1464 / 600 },
+            mobile: { width: 600, height: 450, ratio: 600 / 450 },
+            square: { width: 1600, height: 1600, ratio: 1 },
+            portrait: { width: 1200, height: 1600, ratio: 1200 / 1600 }
+        };
+
+        // --- Event Listeners ---
+
+        fileInput.addEventListener('change', handleFileUpload);
+        
+        resizeModeSelect.addEventListener('change', (e) => {
+            if(e.target.value === 'resize') {
+                hintResize.classList.remove('hidden');
+                hintOriginal.classList.add('hidden');
+            } else {
+                hintResize.classList.add('hidden');
+                hintOriginal.classList.remove('hidden');
+            }
+        });
+
+        qualityRange.addEventListener('input', (e) => {
+            qualityValue.textContent = e.target.value + '%';
+        });
+
+        // Add keyboard support for moving the crop box
+        document.addEventListener('keydown', function(e) {
+            if (!cropper) return;
+            // Prevent interference with standard browser shortcuts if modifiers like Ctrl/Alt are pressed (except Shift)
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
+            
+            // Allow typing in inputs without triggering cropper movement
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            const shiftKey = e.shiftKey;
+            const moveAmount = shiftKey ? 10 : 1; // 10px with Shift, 1px without
+            
+            let data = cropper.getData();
+            let changed = false;
+
+            switch(e.key) {
+                case 'ArrowLeft':
+                    data.x -= moveAmount;
+                    changed = true;
+                    break;
+                case 'ArrowRight':
+                    data.x += moveAmount;
+                    changed = true;
+                    break;
+                case 'ArrowUp':
+                    data.y -= moveAmount;
+                    changed = true;
+                    break;
+                case 'ArrowDown':
+                    data.y += moveAmount;
+                    changed = true;
+                    break;
+            }
+
+            if (changed) {
+                e.preventDefault(); // Prevent scrolling
+                cropper.setData(data);
+                updateCropInfo();
+            }
+        });
+
+        // --- Functions ---
+
+        function handleFileUpload(e) {
+            const newFiles = Array.from(e.target.files);
+            if (newFiles.length === 0) return;
+
+            // Add files to state
+            files = files.concat(newFiles);
+            
+            // Render UI
+            renderThumbnails();
+
+            // If this is the first upload, select the first image
+            if (currentIndex === -1 && files.length > 0) {
+                selectImage(0);
+            }
+
+            // Reset input so same files can be selected again if needed
+            fileInput.value = '';
+        }
+
+        function renderThumbnails() {
+            thumbnailList.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                
+                const div = document.createElement('div');
+                div.className = `flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-slate-800 border border-transparent transition-all ${index === currentIndex ? 'active-thumb bg-slate-800' : 'opacity-70'}`;
+                div.onclick = () => selectImage(index);
+
+                const img = document.createElement('img');
+                img.className = 'w-12 h-12 object-cover rounded bg-slate-700';
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'flex-1 min-w-0';
+                
+                const name = document.createElement('p');
+                name.className = 'text-xs font-medium text-slate-200 truncate';
+                name.textContent = file.name;
+                
+                const size = document.createElement('p');
+                size.className = 'text-[10px] text-slate-500';
+                size.textContent = (file.size / 1024).toFixed(1) + ' KB';
+
+                // Close button
+                const closeBtn = document.createElement('button');
+                closeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                closeBtn.className = 'text-slate-500 hover:text-red-400 p-1';
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    removeImage(index);
+                };
+
+                infoDiv.appendChild(name);
+                infoDiv.appendChild(size);
+                div.appendChild(img);
+                div.appendChild(infoDiv);
+                div.appendChild(closeBtn);
+                thumbnailList.appendChild(div);
+
+                // Load preview async
+                reader.onload = (e) => {
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function removeImage(index) {
+            files.splice(index, 1);
+            if (files.length === 0) {
+                currentIndex = -1;
+                destroyCropper();
+                imageElement.classList.add('hidden');
+                placeholderText.classList.remove('hidden');
+                downloadBtn.disabled = true;
+            } else if (index === currentIndex) {
+                // If we deleted the active one, select the previous one or the first one
+                const nextIndex = index > 0 ? index - 1 : 0;
+                selectImage(nextIndex);
+            } else if (index < currentIndex) {
+                // If we deleted one above, shift index down
+                currentIndex--;
+            }
+            renderThumbnails();
+        }
+
+        function selectImage(index) {
+            currentIndex = index;
+            renderThumbnails(); // Update active state
+
+            const file = files[index];
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                imageElement.src = e.target.result;
+                imageElement.classList.remove('hidden');
+                placeholderText.classList.add('hidden');
+                
+                // Init Cropper
+                initCropper();
+                downloadBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function destroyCropper() {
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            originalSizeEl.textContent = '-';
+            cropSizeEl.textContent = '-';
+        }
+
+        function initCropper() {
+            destroyCropper();
+
+            // Set default preset if not set
+            if(!currentPreset.ratio) setPreset('desktop');
+
+            cropper = new Cropper(imageElement, {
+                aspectRatio: currentPreset.ratio,
+                viewMode: 1, // Restrict crop box to not exceed canvas
+                dragMode: 'move',
+                autoCropArea: 0.9,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+                ready() {
+                    const data = this.cropper.getImageData();
+                    originalSizeEl.textContent = `${Math.round(data.naturalWidth)} x ${Math.round(data.naturalHeight)}`;
+                    updateCropInfo();
+                },
+                crop(event) {
+                    updateCropInfo();
+                },
+                zoom(event) {
+                     document.getElementById('zoomInfo').textContent = `缩放: ${Math.round(event.detail.ratio * 100)}%`;
+                }
+            });
+        }
+
+        function updateCropInfo() {
+            if (!cropper) return;
+            const data = cropper.getData();
+            cropSizeEl.textContent = `${Math.round(data.width)} x ${Math.round(data.height)}`;
+        }
+
+        function setPreset(type) {
+            // UI Update
+            document.querySelectorAll('aside button').forEach(b => b.classList.remove('border-blue-500', 'bg-slate-700'));
+            
+            if (type === 'free') {
+                currentPreset = { name: 'free', width: null, height: null, ratio: NaN };
+                document.getElementById('btnFree').classList.add('text-white');
+            } else {
+                currentPreset = { ...PRESETS[type], name: type };
+                
+                // Map types to IDs
+                const btnMap = {
+                    desktop: 'btnDesktop',
+                    mobile: 'btnMobile',
+                    square: 'btnSquare',
+                    portrait: 'btnPortrait'
+                };
+                
+                const btnId = btnMap[type];
+                const btn = document.getElementById(btnId);
+                if(btn) btn.classList.add('border-blue-500', 'bg-slate-700');
+            }
+
+            if (cropper) {
+                cropper.setAspectRatio(currentPreset.ratio);
+            }
+        }
+
+        function downloadImage() {
+            if (!cropper) return;
+
+            const mode = resizeModeSelect.value;
+            const quality = parseInt(qualityRange.value) / 100;
+            let options = {};
+
+            // Determine Options based on mode
+            if (mode === 'resize' && currentPreset.width) {
+                // Force specific size
+                options = {
+                    width: currentPreset.width,
+                    height: currentPreset.height,
+                    fillColor: '#fff', // Handle transparent PNGs turning black if converting to JPEG
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high',
+                };
+            } else {
+                // Keep original resolution of the crop box
+                options = {
+                    fillColor: '#fff',
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high',
+                };
+            }
+
+            // Generate Canvas
+            const canvas = cropper.getCroppedCanvas(options);
+            
+            if (!canvas) {
+                alert('无法生成画布，可能是图片未加载或尺寸过大。');
+                return;
+            }
+
+            // Convert to Blob and Download
+            canvas.toBlob((blob) => {
+                if (!blob) return;
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                
+                // Generate filename
+                const originalName = files[currentIndex].name;
+                const namePart = originalName.substring(0, originalName.lastIndexOf('.'));
+                const suffix = currentPreset.name !== 'free' ? `_${currentPreset.name}` : '_cropped';
+                
+                a.href = url;
+                a.download = `${namePart}${suffix}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // Show success feedback
+                const btn = document.getElementById('downloadBtn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> 已保存';
+                btn.classList.add('bg-blue-600', 'hover:bg-blue-500');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500');
+                lucide.createIcons();
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+                    btn.classList.add('bg-green-600', 'hover:bg-green-500');
+                    lucide.createIcons();
+                }, 2000);
+
+            }, 'image/jpeg', quality);
+        }
+
+        // Initialize default state
+        setPreset('desktop');
+    </script>
+</body>
+</html>

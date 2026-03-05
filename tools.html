@@ -343,7 +343,7 @@
                 <h2 class="text-2xl font-bold font-tech">图片处理类</h2>
                 <span class="category-badge bg-blue-500/10 border border-blue-500/30 text-blue-400">
                     <i class="fa-solid fa-image"></i>
-                    1 个工具
+                    2 个工具
                 </span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -361,6 +361,23 @@
                     </ul>
                     <button onclick="navigateTo('picture-compressor')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #3b82f6;">
                         开始压缩 <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+
+                <div class="glass-card rounded-xl p-8 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <i class="fa-solid fa-crop text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-3 group-hover:text-cyan-400 transition-colors">A+ 图片裁剪工具</h3>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow leading-relaxed">
+                        专业级图片裁剪与压缩工具，支持多种电商预设尺寸，一键产出符合亚马逊A+内容规范的高质量图片。
+                    </p>
+                    <ul class="text-xs text-gray-500 mb-8 space-y-2">
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 多种预设尺寸</li>
+                        <li class="flex items-center"><i class="fa-solid fa-check text-green-500 mr-2"></i> 批量裁剪处理</li>
+                    </ul>
+                    <button onclick="navigateTo('pic-cutter')" class="neon-btn py-3 w-full rounded font-bold text-sm" style="--primary-glow: #06b6d4;">
+                        开始裁剪 <i class="fa-solid fa-scissors ml-2"></i>
                     </button>
                 </div>
             </div>
@@ -467,7 +484,7 @@
             switch(toolId) {
                 case 'ai-video':
                     toolName = "AI 视频制作工具";
-                    url = 'http://sora2v.brainstrom.top/?code=PW4SVCTF'; 
+                    url = 'https://video.brainyxia.com/?code=PW4SVCTF';
                     break;
                 case 'fba-calc':
                     toolName = "FBA 运费计算器";
@@ -492,6 +509,10 @@
                 case 'picture-compressor':
                     toolName = "图片压缩器";
                     url = 'tools/picture-compressor.html';
+                    break;
+                case 'pic-cutter':
+                    toolName = "A+ 图片裁剪工具";
+                    url = 'tools/pic-cutter.html';
                     break;
             }
 
