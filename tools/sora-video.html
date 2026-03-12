@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sora AI Video Generator - 云雾API</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0a0a0f;
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+.header {
+  text-align: center;
+  padding: 32px 20px 16px;
+  background: linear-gradient(180deg, rgba(99,102,241,0.08) 0%, transparent 100%);
+}
+.header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 6px;
+}
+.header p { color: #888; font-size: 14px; }
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+@media (max-width: 768px) {
+  .container { grid-template-columns: 1fr; }
+}
+.panel {
+  background: #14141f;
+  border: 1px solid #1e1e2e;
+  border-radius: 16px;
+  padding: 24px;
+}
+.panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #c8c8d0;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-title .icon { font-size: 18px; }
+label {
+  display: block;
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+textarea, input[type="text"], input[type="password"], select {
+  width: 100%;
+  background: #1a1a2e;
+  border: 1px solid #2a2a3e;
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #e0e0e0;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+textarea:focus, input:focus, select:focus {
+  border-color: #6366f1;
+}
+textarea { resize: vertical; min-height: 100px; font-family: inherit; }
+select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+select option { background: #1a1a2e; }
+.form-group { margin-bottom: 16px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.upload-area {
+  position: relative;
+  border: 2px dashed #2a2a3e;
+  border-radius: 12px;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: hidden;
+}
+.upload-area:hover, .upload-area.dragover {
+  border-color: #6366f1;
+  background: rgba(99,102,241,0.05);
+}
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-size: 13px;
+}
+.upload-preview {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 8px;
+  display: none;
+}
+.remove-img {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-generate {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  margin-top: 8px;
+}
+.btn-generate:hover { opacity: 0.9; }
+.btn-generate:active { transform: scale(0.98); }
+.btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.result-panel { min-height: 500px; display: flex; flex-direction: column; }
+.result-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+.empty-state { text-align: center; color: #555; }
+.empty-state p { margin-top: 8px; }
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #aaa;
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.status-dot.done { background: #22c55e; animation: none; }
+.status-dot.error { background: #ef4444; animation: none; }
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: #1e1e2e;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.video-card {
+  background: #1a1a2e;
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100%;
+}
+.video-card video {
+  width: 100%;
+  display: block;
+  border-radius: 12px 12px 0 0;
+}
+.video-actions {
+  padding: 12px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.video-actions a, .video-actions button {
+  padding: 6px 14px;
+  background: #2a2a3e;
+  color: #c8c8d0;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.video-actions a:hover, .video-actions button:hover { background: #3a3a4e; }
+.log-area {
+  margin-top: 16px;
+  border-top: 1px solid #1e1e2e;
+  padding-top: 12px;
+}
+.log-area pre {
+  background: #0d0d15;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 11px;
+  color: #888;
+  max-height: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>&#10024; Sora AI Video Generator</h1>
+  <p>基于云雾API · 使用 Sora-2 模型生成高质量AI视频</p>
+</div>
+<div class="container">
+  <div class="left-col">
+    <div class="panel">
+      <div class="panel-title"><span class="icon">&#9881;</span> API 设置</div>
+      <div class="form-group">
+        <label>API Key</label>
+        <input type="password" id="apiKey" placeholder="输入你的云雾API Key (sk-...)" />
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label>API 地址</label>
+          <select id="baseUrl" onchange="onBaseUrlChange()">
+            <option value="https://yunwu.ai">https://yunwu.ai</option>
+            <option value="https://wcnb.ai">https://wcnb.ai</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>接口格式</label>
+          <select id="apiFormat">
+            <option value="openai">OpenAI 官方 (/v1/videos)</option>
+            <option value="unified">统一格式 (/v1/video/create)</option>
+            <option value="chat">Chat Completions (/v1/chat/completions)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <div class="panel-title"><span class="icon">&#9998;</span> 视频参数</div>
+      <div class="form-group">
+        <label>提示词 (Prompt)</label>
+        <textarea id="prompt" placeholder="描述你想生成的视频内容，例如：一只金毛犬在海边奔跑，阳光洒在海面上，慢动作镜头..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>参考图片（可选，图生视频）</label>
+        <div class="upload-area" id="uploadArea">
+          <input type="file" id="imageInput" accept="image/*" style="display:none" />
+          <div class="upload-placeholder" id="uploadPlaceholder">
+            <span style="font-size:28px;">&#128247;</span>
+            <span>点击或拖拽上传参考图片</span>
+          </div>
+          <img id="previewImg" class="upload-preview" />
+          <button class="remove-img" id="removeImg" title="移除图片">&#10005;</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label>模型</label>
+          <select id="model">
+            <option value="sora-2-all">Sora-2-All</option>
+            <option value="sora-2-pro-all">Sora-2-Pro-All</option>
+            <option value="sora-2-vip-all">Sora-2-VIP-All</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>画面方向</label>
+          <select id="orientation">
+            <option value="landscape">横屏 (16:9)</option>
+            <option value="portrait">竖屏 (9:16)</option>
+            <option value="square">方形 (1:1)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row-3">
+        <div class="form-group">
+          <label>分辨率</label>
+          <select id="resolution">
+            <option value="1080p">1080p</option>
+            <option value="720p">720p</option>
+            <option value="480p">480p</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>时长</label>
+          <select id="duration">
+            <option value="5">5 秒</option>
+            <option value="10">10 秒</option>
+            <option value="15">15 秒</option>
+            <option value="20">20 秒</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>变体数量</label>
+          <select id="variants">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-generate" id="btnGenerate" onclick="generateVideo()">
+        <span id="btnText">&#9654; 生成视频</span>
+        <span id="btnLoading" style="display:none;">
+          <span class="spinner"></span> 生成中...
+        </span>
+      </button>
+    </div>
+  </div>
+  <div class="right-col">
+    <div class="panel result-panel">
+      <div class="panel-title"><span class="icon">&#127916;</span> 生成结果</div>
+      <div id="statusArea" style="display:none;">
+        <div class="status-bar">
+          <div class="status-dot"></div>
+          <span id="statusText">等待中...</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+      <div id="resultArea" class="result-area">
+        <div class="empty-state" id="emptyState">
+          <span style="font-size:48px;">&#127910;</span>
+          <p>视频将在这里展示</p>
+          <p style="font-size:12px;color:#555;">填写参数后点击生成</p>
+        </div>
+      </div>
+      <div id="logArea" class="log-area" style="display:none;">
+        <div class="panel-title" style="font-size:13px;"><span class="icon">&#128196;</span> 日志</div>
+        <pre id="logContent"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const uploadArea = document.getElementById('uploadArea');
+const imageInput = document.getElementById('imageInput');
+const previewImg = document.getElementById('previewImg');
+const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+const removeImgBtn = document.getElementById('removeImg');
+let base64Image = null;
+
+function onBaseUrlChange() {
+  const baseUrl = document.getElementById('baseUrl').value;
+  const formatSel = document.getElementById('apiFormat');
+  const modelSel = document.getElementById('model');
+  const models = {
+    'https://yunwu.ai': [
+      { value: 'sora-2-all', label: 'Sora-2-All' },
+      { value: 'sora-2-pro-all', label: 'Sora-2-Pro-All' },
+      { value: 'sora-2-vip-all', label: 'Sora-2-VIP-All' }
+    ],
+    'https://wcnb.ai': [
+      { value: 'sora-2', label: 'Sora-2' }
+    ]
+  };
+  const list = models[baseUrl] || models['https://yunwu.ai'];
+  modelSel.innerHTML = list.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
+  if (baseUrl === 'https://wcnb.ai') {
+    formatSel.value = 'openai';
+  }
+}
+
+uploadArea.addEventListener('click', () => imageInput.click());
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+imageInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    base64Image = e.target.result;
+    previewImg.src = base64Image;
+    previewImg.style.display = 'block';
+    uploadPlaceholder.style.display = 'none';
+    removeImgBtn.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+removeImgBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  base64Image = null;
+  previewImg.style.display = 'none';
+  uploadPlaceholder.style.display = 'flex';
+  removeImgBtn.style.display = 'none';
+  imageInput.value = '';
+});
+
+function log(msg) {
+  const logArea = document.getElementById('logArea');
+  const logContent = document.getElementById('logContent');
+  logArea.style.display = 'block';
+  const time = new Date().toLocaleTimeString();
+  logContent.textContent += `[${time}] ${msg}\n`;
+  logContent.scrollTop = logContent.scrollHeight;
+}
+
+function setStatus(text, state) {
+  const statusArea = document.getElementById('statusArea');
+  const statusText = document.getElementById('statusText');
+  const dot = statusArea.querySelector('.status-dot');
+  statusArea.style.display = 'block';
+  statusText.textContent = text;
+  dot.className = 'status-dot' + (state ? ' ' + state : '');
+}
+
+function setProgress(pct) {
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+async function generateVideo() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) { alert('请输入 API Key'); return; }
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) { alert('请输入提示词'); return; }
+
+  const baseUrl = document.getElementById('baseUrl').value;
+  const format = document.getElementById('apiFormat').value;
+  const model = document.getElementById('model').value;
+  const orientation = document.getElementById('orientation').value;
+  const resolution = document.getElementById('resolution').value;
+  const duration = parseInt(document.getElementById('duration').value);
+  const n = parseInt(document.getElementById('variants').value);
+
+  // 根据方向计算宽高比
+  const aspectMap = { landscape: '16:9', portrait: '9:16', square: '1:1' };
+  const aspect_ratio = aspectMap[orientation];
+
+  const btn = document.getElementById('btnGenerate');
+  const btnText = document.getElementById('btnText');
+  const btnLoading = document.getElementById('btnLoading');
+  btn.disabled = true;
+  btnText.style.display = 'none';
+  btnLoading.style.display = 'inline';
+
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('logContent').textContent = '';
+  setStatus('正在提交生成请求...', '');
+  setProgress(10);
+  log('开始生成视频...');
+  log(`模型: ${model} | 方向: ${orientation} (${aspect_ratio}) | 分辨率: ${resolution} | 时长: ${duration}s | 数量: ${n}`);
+
+  try {
+    let taskId, videoUrls;
+    if (format === 'openai') {
+      log('POST ' + baseUrl + '/v1/videos');
+      let res;
+      if (baseUrl === 'https://wcnb.ai') {
+        // wcnb.ai 使用 multipart/form-data 格式
+        const sizeMap = { landscape: '1280x720', portrait: '720x1280', square: '720x720' };
+        const formData = new FormData();
+        formData.append('model', model);
+        formData.append('prompt', prompt);
+        formData.append('seconds', String(duration));
+        formData.append('size', sizeMap[orientation] || '1280x720');
+        formData.append('watermark', 'false');
+        formData.append('private', 'false');
+        if (base64Image) {
+          // 将 base64 转为 Blob 用于 multipart 上传
+          const byteStr = atob(base64Image.split(',')[1]);
+          const mimeType = base64Image.split(',')[0].match(/:(.*?);/)[1];
+          const ab = new ArrayBuffer(byteStr.length);
+          const ia = new Uint8Array(ab);
+          for (let j = 0; j < byteStr.length; j++) ia[j] = byteStr.charCodeAt(j);
+          const blob = new Blob([ab], { type: mimeType });
+          formData.append('input_reference', blob, 'image.png');
+        }
+        log(`wcnb.ai multipart: model=${model}, seconds=${duration}, size=${sizeMap[orientation]}`);
+        res = await fetch(baseUrl + '/v1/videos', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + apiKey },
+          body: formData
+        });
+      } else {
+        // yunwu.ai 使用 JSON 格式
+        const body = { model, prompt, n, duration, resolution, aspect_ratio };
+        if (base64Image) body.image = base64Image;
+        res = await fetch(baseUrl + '/v1/videos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify(body)
+        });
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || JSON.stringify(data));
+      log('响应: ' + JSON.stringify(data).substring(0, 300));
+      if (data.id && !data.data) {
+        taskId = data.id;
+        log('任务ID: ' + taskId);
+        videoUrls = await pollTask(baseUrl, apiKey, taskId, 'openai');
+      } else if (data.data) {
+        videoUrls = data.data.map(d => d.url);
+      } else if (data.video_url) {
+        videoUrls = [data.video_url];
+      } else {
+        throw new Error('未知响应格式: ' + JSON.stringify(data));
+      }
+    } else if (format === 'chat') {
+      // Chat Completions 格式 (/v1/chat/completions)
+      const messages = [{ role: 'user', content: prompt }];
+      if (base64Image) {
+        messages[0].content = [
+          { type: 'image_url', image_url: { url: base64Image } },
+          { type: 'text', text: prompt }
+        ];
+      }
+      const body = { model, messages, n, duration, resolution, aspect_ratio };
+      log('POST ' + baseUrl + '/v1/chat/completions (model: ' + model + ')');
+      const res = await fetch(baseUrl + '/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || JSON.stringify(data));
+      log('响应: ' + JSON.stringify(data).substring(0, 300));
+      videoUrls = parseChatResponse(data);
+      if (!videoUrls.length) throw new Error('未能从响应中解析出视频URL: ' + JSON.stringify(data));
+    } else {
+      const body = { model, prompt, n, duration, resolution, aspect_ratio };
+      if (base64Image) body.image = base64Image;
+      log('POST ' + baseUrl + '/v1/video/create');
+      const res = await fetch(baseUrl + '/v1/video/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || JSON.stringify(data));
+      log('响应: ' + JSON.stringify(data).substring(0, 200));
+      if (data.task_id || data.id) {
+        taskId = data.task_id || data.id;
+        log('任务ID: ' + taskId);
+        videoUrls = await pollTask(baseUrl, apiKey, taskId, 'unified');
+      } else if (data.data) {
+        videoUrls = data.data.map(d => d.url);
+      } else {
+        throw new Error('未知响应格式: ' + JSON.stringify(data));
+      }
+    }
+    showVideos(videoUrls);
+    setStatus('生成完成!', 'done');
+    setProgress(100);
+    log('视频生成成功!');
+  } catch (err) {
+    setStatus('生成失败: ' + err.message, 'error');
+    setProgress(0);
+    log('错误: ' + err.message);
+    document.getElementById('emptyState').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btnText.style.display = 'inline';
+    btnLoading.style.display = 'none';
+  }
+}
+
+async function pollTask(baseUrl, apiKey, taskId, format) {
+  const headers = { 'Authorization': 'Bearer ' + apiKey };
+  let progress = 20;
+  for (let i = 0; i < 120; i++) {
+    await new Promise(r => setTimeout(r, 5000));
+    progress = Math.min(90, progress + 3);
+    setProgress(progress);
+    setStatus(`生成中... (${Math.round(progress)}%)`, '');
+
+    let url;
+    if (format === 'openai') {
+      url = `${baseUrl}/v1/videos/${taskId}`;
+    } else {
+      url = `${baseUrl}/v1/video/status/${taskId}`;
+    }
+    log('轮询: GET ' + url);
+    const res = await fetch(url, { headers });
+    const data = await res.json();
+    log('状态: ' + (data.status || 'unknown'));
+
+    // 使用 wcnb.ai 返回的 progress 或 detail.pending_info.progress_pct 更新进度
+    if (data.progress != null && data.progress > 0) {
+      progress = Math.min(95, data.progress);
+    } else if (data.detail?.pending_info?.progress_pct != null) {
+      progress = Math.min(95, Math.round(data.detail.pending_info.progress_pct * 100));
+    }
+    setProgress(progress);
+    setStatus(`生成中... (${Math.round(progress)}%)`, '');
+
+    if (data.status === 'completed' || data.status === 'succeeded' || data.status === 'success') {
+      if (data.video_url) return [data.video_url];
+      if (data.data) return data.data.map(d => d.url);
+      if (data.videos) return data.videos.map(v => v.url || v);
+      if (data.result?.videos) return data.result.videos.map(v => v.url || v);
+      if (data.url) return [data.url];
+      throw new Error('完成但无法解析视频URL: ' + JSON.stringify(data));
+    }
+    if (data.status === 'failed' || data.status === 'error') {
+      throw new Error('任务失败: ' + (data.error || data.message || JSON.stringify(data)));
+    }
+  }
+  throw new Error('轮询超时（10分钟）');
+}
+
+function parseChatResponse(data) {
+  const urls = [];
+  // 尝试从 choices 中提取视频URL
+  const choices = data.choices || [];
+  for (const choice of choices) {
+    const msg = choice.message || choice;
+    const content = msg.content || '';
+    // 如果 content 是字符串，尝试提取URL
+    if (typeof content === 'string') {
+      const urlMatches = content.match(/https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*/g);
+      if (urlMatches) urls.push(...urlMatches);
+      // 也尝试匹配通用视频链接
+      const allUrls = content.match(/https?:\/\/[^\s"'<>]+/g);
+      if (!urlMatches && allUrls) {
+        for (const u of allUrls) {
+          if (/\.(mp4|webm|mov)/i.test(u) || /video/i.test(u)) urls.push(u);
+        }
+      }
+    }
+    // 如果 content 是数组（多模态响应）
+    if (Array.isArray(content)) {
+      for (const part of content) {
+        if (part.type === 'video_url' || part.type === 'video') {
+          urls.push(part.video_url?.url || part.url || part.video);
+        }
+        if (part.type === 'text' && typeof part.text === 'string') {
+          const m = part.text.match(/https?:\/\/[^\s"'<>]+/g);
+          if (m) for (const u of m) {
+            if (/\.(mp4|webm|mov)/i.test(u) || /video/i.test(u)) urls.push(u);
+          }
+        }
+      }
+    }
+  }
+  // 也检查 data.data 字段
+  if (!urls.length && data.data) {
+    const arr = Array.isArray(data.data) ? data.data : [data.data];
+    for (const d of arr) { if (d.url) urls.push(d.url); }
+  }
+  return urls.filter(Boolean);
+}
+
+function showVideos(urls) {
+  const area = document.getElementById('resultArea');
+  area.innerHTML = '';
+  urls.forEach((url, i) => {
+    const card = document.createElement('div');
+    card.className = 'video-card';
+    card.innerHTML = `
+      <video controls autoplay loop muted playsinline>
+        <source src="${url}" type="video/mp4">
+      </video>
+      <div class="video-actions">
+        <a href="${url}" target="_blank">&#128279; 新窗口打开</a>
+        <button onclick="downloadVideo('${url}', ${i})">&#11015; 下载</button>
+      </div>`;
+    area.appendChild(card);
+  });
+}
+
+function downloadVideo(url, index) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sora-video-' + (index + 1) + '.mp4';
+  a.click();
+}
+</script>
+</body>
+</html>
