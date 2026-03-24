@@ -232,6 +232,7 @@
                             <option value="1:1">1:1 (正方形)</option>
                             <option value="16:9">16:9 (横屏/风景)</option>
                             <option value="9:16">9:16 (竖屏/手机)</option>
+                            <option value="21:9">21:9 (超宽屏/影院)</option>
                             <option value="4:3">4:3 (标准)</option>
                             <option value="3:4">3:4 (人像)</option>
                         </select>
@@ -480,6 +481,13 @@
                                 <div class="text-[10px] text-gray-600">1920 x 1080 px</div>
                             </div>
                             <div class="w-8 h-[18px] border border-gray-600 rounded-sm bg-gray-800"></div>
+                        </button>
+                        <button onclick="setCropPreset('21:9')" data-preset="21:9" class="crop-preset-btn flex items-center justify-between p-2.5 rounded-lg border border-gray-700 hover:border-yellow-500/50 bg-gray-900/50 text-left">
+                            <div>
+                                <div class="text-xs font-medium text-gray-300">超宽屏 21:9</div>
+                                <div class="text-[10px] text-gray-600">2560 x 1080 px</div>
+                            </div>
+                            <div class="w-8 h-[14px] border border-gray-600 rounded-sm bg-gray-800"></div>
                         </button>
                         <button onclick="setCropPreset('9:16')" data-preset="9:16" class="crop-preset-btn flex items-center justify-between p-2.5 rounded-lg border border-gray-700 hover:border-yellow-500/50 bg-gray-900/50 text-left">
                             <div>
@@ -1323,6 +1331,7 @@
             square:   { width: 1600, height: 1600, ratio: 1 },
             portrait: { width: 1200, height: 1600, ratio: 1200 / 1600 },
             '16:9':   { width: 1920, height: 1080, ratio: 16 / 9 },
+            '21:9':   { width: 2560, height: 1080, ratio: 21 / 9 },
             '9:16':   { width: 1080, height: 1920, ratio: 9 / 16 },
             custom:   { width: null, height: null, ratio: NaN }
         };
