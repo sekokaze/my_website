@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
     <style>
         body {
             font-family: 'Noto Sans SC', sans-serif;
@@ -53,6 +55,59 @@
             aside { width: 100% !important; height: auto; max-height: 50vh; }
             main { flex-direction: column-reverse; }
         }
+
+        /* 历史记录卡片 */
+        .history-card {
+            transition: all 0.2s;
+        }
+        .history-card:hover {
+            border-color: rgba(250, 204, 21, 0.4);
+            background: rgba(250, 204, 21, 0.05);
+        }
+        .history-card img {
+            transition: transform 0.3s;
+        }
+        .history-card:hover img {
+            transform: scale(1.05);
+        }
+
+        /* 拖拽上传 */
+        .drop-zone.drag-over {
+            border-color: #FACC15 !important;
+            background: rgba(250, 204, 21, 0.08) !important;
+            box-shadow: inset 0 0 30px rgba(250, 204, 21, 0.05);
+        }
+        .drop-zone.drag-over .drop-hint {
+            display: flex !important;
+        }
+
+        /* 裁剪弹窗 */
+        .cropper-view-box,
+        .cropper-face {
+            border-radius: 0;
+            outline: 1px solid rgba(255, 255, 255, 0.75);
+        }
+        .cropper-container {
+            background-color: #1a1a2e;
+            background-image:
+                linear-gradient(45deg, #262630 25%, transparent 25%),
+                linear-gradient(-45deg, #262630 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #262630 75%),
+                linear-gradient(-45deg, transparent 75%, #262630 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        .cropper-canvas {
+            box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.5), 0 0 20px rgba(0,0,0,0.8);
+        }
+        .crop-preset-btn {
+            transition: all 0.15s;
+        }
+        .crop-preset-btn.active {
+            border-color: #FACC15 !important;
+            background: rgba(250, 204, 21, 0.1) !important;
+            color: #FACC15 !important;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -75,7 +130,7 @@
             </button>
             <div class="h-6 w-px bg-gray-700 mx-1 sm:mx-2"></div>
             <div class="flex items-center gap-2 text-xs text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20 font-mono">
-                <i class="fas fa-circle text-[8px] animate-pulse"></i> <span class="hidden sm:inline">Gemini 3 Pro</span><span class="sm:hidden">Pro</span>
+                <i class="fas fa-circle text-[8px] animate-pulse"></i> <span id="modelBadge" class="hidden sm:inline">Gemini 3 Pro</span><span id="modelBadgeShort" class="sm:hidden">Pro</span>
             </div>
         </div>
     </header>
@@ -116,17 +171,25 @@
                     </label>
                     
                     <!-- 文件输入框 -->
-                    <input type="file" id="fileInput" accept="image/*" multiple class="hidden" onchange="handleFile(this)">
-                    
-                    <!-- 上传/预览区域 -->
-                    <div class="border border-dashed border-gray-700 bg-gray-900/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/50 hover:bg-gray-800 relative group min-h-[100px] flex flex-col justify-center">
+                    <input type="file" id="fileInput" accept="image/*" multiple class="hidden" onchange="handleFileInput(this)">
+
+                    <!-- 上传/预览区域 (支持拖拽) -->
+                    <div id="dropZone" class="drop-zone border border-dashed border-gray-700 bg-gray-900/50 rounded-lg p-3 text-center transition-all hover:border-yellow-500/50 hover:bg-gray-800 relative group min-h-[100px] flex flex-col justify-center">
                         <div onclick="document.getElementById('fileInput').click()" class="absolute inset-0 cursor-pointer z-0"></div>
+
+                        <!-- 拖拽提示覆盖层 -->
+                        <div class="drop-hint hidden absolute inset-0 z-30 rounded-lg items-center justify-center pointer-events-none">
+                            <div class="text-center">
+                                <i class="fas fa-arrow-down text-yellow-400 text-2xl mb-2 animate-bounce"></i>
+                                <p class="text-xs text-yellow-400 font-bold">松开鼠标放入图片</p>
+                            </div>
+                        </div>
 
                         <!-- 无图片状态 -->
                         <div id="uploadPlaceholder" class="pointer-events-none relative z-10">
                             <i class="fas fa-cloud-upload-alt text-2xl text-gray-600 mb-2"></i>
-                            <p class="text-xs text-gray-500">点击上传参考图</p>
-                            <p class="text-[10px] text-gray-600 mt-1">支持多选 (Max 5)</p>
+                            <p class="text-xs text-gray-500">点击或拖拽图片到此处</p>
+                            <p class="text-[10px] text-gray-600 mt-1">支持多选 / 拖拽多张 (Max 5)</p>
                         </div>
 
                         <!-- 预览网格 -->
@@ -141,7 +204,19 @@
                     </div>
                 </div>
 
-                <!-- 3. 提示词 -->
+                <!-- 3. 模型选择 -->
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">模型 (Model)</label>
+                    <div class="relative">
+                        <select id="modelSelect" onchange="updateModelBadge()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm text-gray-300 focus:border-yellow-400 outline-none font-mono appearance-none">
+                            <option value="gemini-3-pro-image-preview">Gemini 3 Pro (高质量)</option>
+                            <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash (快速)</option>
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-3 top-3 text-xs text-gray-500 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- 4. 提示词 -->
                 <div class="space-y-2">
                     <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">正向提示词 (Prompt)</label>
                     <textarea id="promptInput" rows="4" 
@@ -175,6 +250,49 @@
                         </select>
                         <i class="fas fa-chevron-down absolute right-3 top-3 text-xs text-gray-500 pointer-events-none"></i>
                     </div>
+                </div>
+
+                <!-- 6. 本地保存设置 -->
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider flex justify-between">
+                        <span>本地保存 (Auto Save)</span>
+                        <i class="fas fa-folder-open text-gray-600"></i>
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-xs text-gray-500 font-mono truncate" id="folderPathDisplay">
+                            未选择文件夹
+                        </div>
+                        <button onclick="pickSaveFolder()" class="shrink-0 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 text-xs px-3 py-2.5 rounded-lg transition">
+                            <i class="fas fa-folder-plus mr-1"></i>选择
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="autoSaveToggle" class="accent-yellow-400 w-3.5 h-3.5" checked>
+                            <span class="text-[11px] text-gray-400">生成后自动保存</span>
+                        </label>
+                    </div>
+                    <p class="text-[10px] text-gray-600">选择文件夹后，生成的图片和提示词会自动保存到该目录</p>
+                </div>
+
+                <!-- 7. 历史记录 -->
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider flex justify-between">
+                        <span>历史记录 (History)</span>
+                        <div class="flex gap-2">
+                            <a href="#" onclick="event.preventDefault(); loadConfigFile()" class="text-[10px] text-yellow-500 hover:underline">导入记录</a>
+                            <a href="#" onclick="event.preventDefault(); exportHistory()" class="text-[10px] text-blue-400 hover:underline">导出记录</a>
+                        </div>
+                    </label>
+                    <div id="historyList" class="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                        <div class="text-center text-[11px] text-gray-600 py-4">
+                            <i class="fas fa-clock-rotate-left text-lg mb-2 block"></i>
+                            暂无历史记录
+                        </div>
+                    </div>
+                    <button onclick="clearHistory()" id="clearHistoryBtn" class="hidden text-[10px] text-red-500 hover:text-red-400 w-full text-center py-1">
+                        <i class="fas fa-trash-alt mr-1"></i>清空历史记录
+                    </button>
                 </div>
 
             </div>
@@ -219,19 +337,24 @@
                 </div>
 
                 <!-- 结果图片 -->
-                <div id="imageWrapper" class="hidden relative group shadow-2xl rounded-lg overflow-hidden border border-white/10 max-h-[80vh] w-auto">
-                    <img id="resultImage" class="max-w-full max-h-[70vh] sm:max-h-[80vh] object-contain block bg-[#181b21]" alt="Generated Result">
-                    
-                    <!-- 悬浮操作栏 -->
-                    <div id="actionToolbar" class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-black/80 backdrop-blur-md border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
-                        <button onclick="downloadImage()" class="w-9 h-9 rounded-full hover:bg-white/10 text-white flex items-center justify-center tooltip transition-colors" title="下载">
+                <div id="imageWrapper" class="hidden flex flex-col items-center gap-4">
+                    <div class="relative shadow-2xl rounded-lg overflow-hidden border border-white/10 max-h-[70vh] w-auto">
+                        <img id="resultImage" class="max-w-full max-h-[65vh] sm:max-h-[70vh] object-contain block bg-[#181b21]" alt="Generated Result">
+                    </div>
+
+                    <!-- 操作栏 (常驻显示) -->
+                    <div id="actionToolbar" class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
+                        <button onclick="openCropModal()" class="w-9 h-9 rounded-full hover:bg-white/10 text-white flex items-center justify-center transition-colors" title="裁剪">
+                            <i class="fas fa-crop-simple"></i>
+                        </button>
+                        <button onclick="downloadImage()" class="w-9 h-9 rounded-full hover:bg-white/10 text-white flex items-center justify-center transition-colors" title="下载">
                             <i class="fas fa-download"></i>
                         </button>
-                        <button onclick="copyToClipboard()" class="w-9 h-9 rounded-full hover:bg-white/10 text-white flex items-center justify-center tooltip transition-colors" title="复制链接">
+                        <button onclick="copyToClipboard()" class="w-9 h-9 rounded-full hover:bg-white/10 text-white flex items-center justify-center transition-colors" title="复制">
                             <i class="far fa-copy"></i>
                         </button>
                         <div class="w-px h-4 bg-white/20 mx-1"></div>
-                        <button onclick="closeResult()" class="w-9 h-9 rounded-full hover:bg-red-500/20 text-gray-400 hover:text-red-400 flex items-center justify-center tooltip transition-colors" title="关闭">
+                        <button onclick="closeResult()" class="w-9 h-9 rounded-full hover:bg-red-500/20 text-gray-400 hover:text-red-400 flex items-center justify-center transition-colors" title="关闭">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -278,6 +401,149 @@
         </div>
     </div>
 
+    <!-- 裁剪弹窗 -->
+    <div id="cropModal" class="hidden fixed inset-0 z-50 flex flex-col bg-[#0f1115]">
+        <!-- 裁剪顶栏 -->
+        <div class="h-14 bg-[#13151a] border-b border-gray-800 flex items-center justify-between px-5 shrink-0">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-crop-simple text-yellow-400"></i>
+                <span class="text-sm font-bold text-white">图片裁剪</span>
+                <span class="text-[10px] text-gray-500 font-mono ml-2">
+                    原始: <span id="cropOriginalSize" class="text-gray-400">-</span>
+                    &nbsp;|&nbsp; 裁剪区: <span id="cropCurrentSize" class="text-yellow-400">-</span>
+                </span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="cropAndApply()" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold text-xs px-4 py-2 rounded-lg transition flex items-center gap-2">
+                    <i class="fas fa-check"></i> 应用裁剪
+                </button>
+                <button onclick="cropAndDownload()" class="bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition flex items-center gap-2">
+                    <i class="fas fa-download"></i> 裁剪并下载
+                </button>
+                <button onclick="closeCropModal()" class="text-gray-400 hover:text-white transition w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-800">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 裁剪主体 -->
+        <div class="flex-1 flex overflow-hidden">
+            <!-- 裁剪画布 -->
+            <div class="flex-1 relative overflow-hidden bg-[#0a0a0f]">
+                <img id="cropImage" class="max-w-full hidden" alt="Crop">
+            </div>
+
+            <!-- 裁剪控制面板 -->
+            <div class="w-72 bg-[#13151a] border-l border-gray-800 overflow-y-auto shrink-0 flex flex-col">
+                <!-- 预设比例 -->
+                <div class="p-4 border-b border-gray-800">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">裁剪预设</h4>
+                    <div class="grid grid-cols-1 gap-2" id="cropPresetGrid">
+                        <button onclick="setCropPreset('free')" data-preset="free" class="crop-preset-btn active flex items-center justify-between p-2.5 rounded-lg border border-gray-700 hover:border-yellow-500/50 bg-gray-900/50 text-left">
+                            <div>
+                                <div class="text-xs font-medium text-gray-300">自由裁剪</div>
+                                <div class="text-[10px] text-gray-600">不限比例</div>
+                            </div>
+                            <i class="fas fa-expand text-gray-600 text-xs"></i>
+                        </button>
+                        <button onclick="setCropPreset('desktop')" data-preset="desktop" class="crop-preset-btn flex items-center justify-between p-2.5 rounded-lg border border-gray-700 hover:border-yellow-500/50 bg-gray-900/50 text-left">
+                            <div>
+                                <div class="text-xs font-medium text-gray-300">电脑端 Banner</div>
+                                <div class="text-[10px] text-gray-600">1464 x 600 px</div>
+                            </div>
+                            <div class="w-8 h-3 border border-gray-600 rounded-sm bg-gray-800"></div>
+                        </button>
+                        <button onclick="setCropPreset('mobile')" data-preset="mobile" class="crop-preset-btn flex items-center justify-between p-2.5 rounded-lg border border-gray-700 hover:border-yellow-500/50 bg-gray-900/50 text-left">
+                            <div>
+                                <div class="text-xs font-medium text-gray-300">手机端 Cover</div>
+                                <div class="text-[10px] text-gray-600">600 x 450 px</div>
+                            </div>
+                            <div class="w-6 h-4 border border-gray-600 rounded-sm bg-gray-800"></div>
+                        </button>
+                        <button onclick="setCropPreset('square')" data-preset="square" class="crop-preset-btn flex items-center justify-between p-2.5 rounded-lg border border-gray-700 hover:border-yellow-500/50 bg-gray-900/50 text-left">
+                            <div>
+                                <div class="text-xs font-medium text-gray-300">方形 (电商主图)</div>
+                                <div class="text-[10px] text-gray-600">1600 x 1600 px</div>
+                            </div>
+                            <div class="w-4 h-4 border border-gray-600 rounded-sm bg-gray-800"></div>
+                        </button>
+                        <button onclick="setCropPreset('portrait')" data-preset="portrait" class="crop-preset-btn flex items-center justify-between p-2.5 rounded-lg border border-gray-700 hover:border-yellow-500/50 bg-gray-900/50 text-left">
+                            <div>
+                                <div class="text-xs font-medium text-gray-300">竖屏 (海报/手机)</div>
+                                <div class="text-[10px] text-gray-600">1200 x 1600 px</div>
+                            </div>
+                            <div class="w-3 h-4 border border-gray-600 rounded-sm bg-gray-800"></div>
+                        </button>
+                        <button onclick="setCropPreset('16:9')" data-preset="16:9" class="crop-preset-btn flex items-center justify-between p-2.5 rounded-lg border border-gray-700 hover:border-yellow-500/50 bg-gray-900/50 text-left">
+                            <div>
+                                <div class="text-xs font-medium text-gray-300">宽屏 16:9</div>
+                                <div class="text-[10px] text-gray-600">1920 x 1080 px</div>
+                            </div>
+                            <div class="w-8 h-[18px] border border-gray-600 rounded-sm bg-gray-800"></div>
+                        </button>
+                        <button onclick="setCropPreset('9:16')" data-preset="9:16" class="crop-preset-btn flex items-center justify-between p-2.5 rounded-lg border border-gray-700 hover:border-yellow-500/50 bg-gray-900/50 text-left">
+                            <div>
+                                <div class="text-xs font-medium text-gray-300">竖屏 9:16</div>
+                                <div class="text-[10px] text-gray-600">1080 x 1920 px</div>
+                            </div>
+                            <div class="w-[18px] h-8 border border-gray-600 rounded-sm bg-gray-800"></div>
+                        </button>
+
+                        <!-- 自定义分辨率 -->
+                        <button onclick="setCropPreset('custom')" data-preset="custom" class="crop-preset-btn flex items-center justify-between p-2.5 rounded-lg border border-gray-700 hover:border-yellow-500/50 bg-gray-900/50 text-left">
+                            <div>
+                                <div class="text-xs font-medium text-gray-300">自定义尺寸</div>
+                                <div class="text-[10px] text-gray-600">输入任意分辨率</div>
+                            </div>
+                            <i class="fas fa-pen text-gray-600 text-xs"></i>
+                        </button>
+                        <div id="customSizeInputs" class="hidden flex items-center gap-2 px-1">
+                            <input type="number" id="customWidth" placeholder="宽" min="1" max="9999"
+                                class="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-2 text-xs text-gray-200 font-mono text-center focus:border-yellow-400 outline-none appearance-none"
+                                oninput="applyCustomSize()">
+                            <span class="text-gray-600 text-xs shrink-0">×</span>
+                            <input type="number" id="customHeight" placeholder="高" min="1" max="9999"
+                                class="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-2 text-xs text-gray-200 font-mono text-center focus:border-yellow-400 outline-none appearance-none"
+                                oninput="applyCustomSize()">
+                            <button onclick="applyCustomSize()" class="shrink-0 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 text-[10px] px-2.5 py-2 rounded-lg border border-yellow-500/30 transition">
+                                应用
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 输出设置 -->
+                <div class="p-4 border-b border-gray-800">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">输出设置</h4>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[11px] text-gray-400 block mb-1.5">尺寸策略</label>
+                            <select id="cropResizeMode" class="w-full bg-gray-900 border border-gray-700 text-gray-300 text-xs rounded-lg p-2 outline-none focus:border-yellow-400">
+                                <option value="resize">强制缩放到目标尺寸</option>
+                                <option value="original">保持原始分辨率</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1.5">
+                                <label class="text-[11px] text-gray-400">压缩质量</label>
+                                <span id="cropQualityValue" class="text-[11px] font-mono text-yellow-400">90%</span>
+                            </div>
+                            <input type="range" id="cropQualityRange" min="10" max="100" value="90" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 键盘提示 -->
+                <div class="p-4 mt-auto">
+                    <div class="text-[10px] text-gray-600 space-y-1">
+                        <p><kbd class="bg-gray-800 px-1 rounded text-gray-500">↑↓←→</kbd> 移动裁剪框</p>
+                        <p><kbd class="bg-gray-800 px-1 rounded text-gray-500">Shift</kbd> + 方向键 快速移动</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast 通知 -->
     <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 -translate-y-4 w-auto max-w-[90vw]">
         <div class="glass-panel px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-3 border border-white/10 bg-[#1e2026]/95">
@@ -286,22 +552,64 @@
         </div>
     </div>
 
+    <!-- Cropper.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
     <script>
         // --- 状态管理 ---
         const state = {
-            refImages: [], 
+            refImages: [],
             isGenerating: false,
-            timerInterval: null
+            timerInterval: null,
+            saveFolderHandle: null,
+            history: []
         };
 
         // --- 初始化 ---
         window.addEventListener('DOMContentLoaded', () => {
             const savedHost = localStorage.getItem('nano_banana_host');
             const savedKey = localStorage.getItem('nano_banana_key');
-            
+
             if (savedHost) document.getElementById('apiHost').value = savedHost;
             if (savedKey) document.getElementById('apiToken').value = savedKey;
+
+            // 加载历史记录
+            const savedHistory = localStorage.getItem('nano_banana_history');
+            if (savedHistory) {
+                try {
+                    state.history = JSON.parse(savedHistory);
+                    renderHistory();
+                } catch(e) { console.error('历史记录解析失败', e); }
+            }
+
+            // 加载自动保存设置
+            const autoSave = localStorage.getItem('nano_banana_autosave');
+            if (autoSave !== null) {
+                document.getElementById('autoSaveToggle').checked = autoSave === 'true';
+            }
+            // 加载保存的模型选择
+            const savedModel = localStorage.getItem('nano_banana_model');
+            if (savedModel) {
+                document.getElementById('modelSelect').value = savedModel;
+            }
+            updateModelBadge();
         });
+
+        // --- UI 逻辑: 模型切换 ---
+        function updateModelBadge() {
+            const select = document.getElementById('modelSelect');
+            const model = select.value;
+            const badge = document.getElementById('modelBadge');
+            const badgeShort = document.getElementById('modelBadgeShort');
+            if (model.includes('flash')) {
+                badge.textContent = 'Gemini 3.1 Flash';
+                badgeShort.textContent = 'Flash';
+            } else {
+                badge.textContent = 'Gemini 3 Pro';
+                badgeShort.textContent = 'Pro';
+            }
+            localStorage.setItem('nano_banana_model', model);
+        }
 
         // --- UI 逻辑: 设置与数据管理 ---
         function saveSettings() {
@@ -315,10 +623,17 @@
             if(confirm('确定要清除 API Key 和设置吗？\n在公共设备上使用建议清除。')) {
                 localStorage.removeItem('nano_banana_host');
                 localStorage.removeItem('nano_banana_key');
+                localStorage.removeItem('nano_banana_history');
+                localStorage.removeItem('nano_banana_autosave');
+                localStorage.removeItem('nano_banana_model');
                 document.getElementById('apiToken').value = '';
-                document.getElementById('apiHost').value = 'https://yunwu.ai'; // 重置为默认
-                state.refImages = []; // 清空图片
+                document.getElementById('apiHost').value = 'https://yunwu.ai';
+                state.refImages = [];
+                state.history = [];
+                state.saveFolderHandle = null;
                 renderPreviews();
+                renderHistory();
+                document.getElementById('folderPathDisplay').textContent = '未选择文件夹';
                 document.getElementById('settingsModal').classList.add('hidden');
                 showToast('本地数据已清除');
             }
@@ -332,18 +647,66 @@
             icon.classList.toggle('fa-eye-slash');
         }
 
-        // --- UI 逻辑: 图片上传 ---
-        function handleFile(input) {
-            const files = Array.from(input.files);
-            if (files.length === 0) return;
+        // --- UI 逻辑: 图片上传 (点击 + 拖拽) ---
+        // 拖拽事件绑定
+        (function initDropZone() {
+            const zone = document.getElementById('dropZone');
+            if (!zone) return;
+            let dragCounter = 0;
 
+            zone.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter++;
+                zone.classList.add('drag-over');
+            });
+
+            zone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter--;
+                if (dragCounter <= 0) {
+                    dragCounter = 0;
+                    zone.classList.remove('drag-over');
+                }
+            });
+
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter = 0;
+                zone.classList.remove('drag-over');
+
+                const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                if (files.length === 0) {
+                    showToast('请拖入图片文件', 'error');
+                    return;
+                }
+                processFiles(files);
+            });
+        })();
+
+        // input[file] 选择回调
+        function handleFileInput(input) {
+            const files = Array.from(input.files);
+            input.value = '';
+            if (files.length === 0) return;
+            processFiles(files);
+        }
+
+        // 通用文件处理
+        function processFiles(files) {
             const MAX_IMAGES = 5;
             const remainingSlots = MAX_IMAGES - state.refImages.length;
-            
+
             if (remainingSlots <= 0) {
-                 showToast(`最多支持 ${MAX_IMAGES} 张参考图`, 'error');
-                 input.value = '';
-                 return;
+                showToast(`最多支持 ${MAX_IMAGES} 张参考图`, 'error');
+                return;
             }
 
             const filesToProcess = files.slice(0, remainingSlots);
@@ -379,7 +742,6 @@
                 };
                 reader.readAsDataURL(file);
             });
-            input.value = ''; 
         }
 
         function removeRefImage(id) {
@@ -431,6 +793,7 @@
             const key = document.getElementById('apiToken').value.trim();
             const prompt = document.getElementById('promptInput').value.trim();
             const aspectRatio = document.getElementById('aspectRatioSelect').value;
+            const model = document.getElementById('modelSelect').value;
             // 获取画质选择
             const imageQuality = document.getElementById('imageQualitySelect').value;
 
@@ -443,7 +806,7 @@
 
             try {
                 // 构造 URL
-                const url = `${host}/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${key}`;
+                const url = `${host}/v1beta/models/${model}:generateContent?key=${key}`;
 
                 // 构造 Payload
                 const parts = [{ text: prompt }];
@@ -494,6 +857,13 @@
 
                 showResult(`data:image/jpeg;base64,${base64Img}`);
 
+                // 保存到历史记录
+                const settings = { aspectRatio: aspectRatio, imageQuality: imageQuality };
+                addToHistory(prompt, base64Img, settings);
+
+                // 自动保存到文件夹
+                await saveToFolder(prompt, base64Img, settings);
+
             } catch (error) {
                 console.error(error);
                 showToast(error.message, 'error');
@@ -524,19 +894,24 @@
             document.getElementById('loadingOverlay').classList.add('hidden');
         }
 
-        function showResult(url) {
+        function showResult(url, silent) {
             const img = document.getElementById('resultImage');
-            img.src = url;
-            img.onload = () => {
-                stopLoading();
+            const show = () => {
+                if (!silent) stopLoading();
                 document.getElementById('imageWrapper').classList.remove('hidden');
                 document.getElementById('emptyState').classList.add('hidden');
-                showToast('绘图完成');
+                if (!silent) showToast('绘图完成');
             };
+            img.onload = show;
             img.onerror = () => {
-                stopLoading();
+                if (!silent) stopLoading();
                 showToast('图片加载失败', 'error');
             };
+            img.src = url;
+            // 图片已缓存时 onload 可能不触发，手动检查
+            if (img.complete && img.naturalWidth > 0) {
+                show();
+            }
         }
 
         function closeResult() {
@@ -569,14 +944,570 @@
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toastIcon');
             const text = document.getElementById('toastMsg');
-            
+
             text.textContent = msg;
             icon.className = type === 'error' ? 'fas fa-circle-exclamation text-red-500' : 'fas fa-check-circle text-green-400';
-            
+
             toast.classList.remove('opacity-0', '-translate-y-4');
             clearTimeout(window.toastTimeout);
             window.toastTimeout = setTimeout(() => toast.classList.add('opacity-0', '-translate-y-4'), 3000);
         }
+
+        // --- 文件夹选择与本地保存 ---
+        async function pickSaveFolder() {
+            if (!window.showDirectoryPicker) {
+                showToast('当前浏览器不支持文件夹选择，请使用 Chrome/Edge', 'error');
+                return;
+            }
+            try {
+                state.saveFolderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                document.getElementById('folderPathDisplay').textContent = state.saveFolderHandle.name;
+                document.getElementById('folderPathDisplay').title = state.saveFolderHandle.name;
+                showToast(`已选择文件夹: ${state.saveFolderHandle.name}`);
+                // 尝试从文件夹读取已有配置
+                await loadConfigFromFolder();
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    showToast('文件夹选择失败', 'error');
+                }
+            }
+        }
+
+        async function saveToFolder(prompt, imageBase64, settings) {
+            if (!state.saveFolderHandle) return;
+            if (!document.getElementById('autoSaveToggle').checked) return;
+
+            try {
+                // 验证权限
+                const perm = await state.saveFolderHandle.queryPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') {
+                    const req = await state.saveFolderHandle.requestPermission({ mode: 'readwrite' });
+                    if (req !== 'granted') {
+                        showToast('文件夹写入权限被拒绝', 'error');
+                        return;
+                    }
+                }
+
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                const baseName = `NanoBanana_${timestamp}`;
+
+                // 保存图片
+                const imgFileName = `${baseName}.jpg`;
+                const imgFile = await state.saveFolderHandle.getFileHandle(imgFileName, { create: true });
+                const imgWritable = await imgFile.createWritable();
+                const imgData = atob(imageBase64);
+                const imgArray = new Uint8Array(imgData.length);
+                for (let i = 0; i < imgData.length; i++) {
+                    imgArray[i] = imgData.charCodeAt(i);
+                }
+                await imgWritable.write(imgArray);
+                await imgWritable.close();
+
+                // 保存提示词元数据
+                const metaFileName = `${baseName}.json`;
+                const meta = {
+                    prompt: prompt,
+                    aspectRatio: settings.aspectRatio,
+                    imageQuality: settings.imageQuality,
+                    imageFile: imgFileName,
+                    createdAt: new Date().toISOString(),
+                    refImageCount: state.refImages.length
+                };
+                const metaFile = await state.saveFolderHandle.getFileHandle(metaFileName, { create: true });
+                const metaWritable = await metaFile.createWritable();
+                await metaWritable.write(JSON.stringify(meta, null, 2));
+                await metaWritable.close();
+
+                // 更新总配置文件
+                await updateConfigInFolder();
+
+                showToast(`已保存到 ${state.saveFolderHandle.name}/${baseName}`);
+            } catch (e) {
+                console.error('保存失败:', e);
+                showToast('文件保存失败: ' + e.message, 'error');
+            }
+        }
+
+        async function updateConfigInFolder() {
+            if (!state.saveFolderHandle) return;
+            try {
+                const configFile = await state.saveFolderHandle.getFileHandle('banana-history.json', { create: true });
+                const writable = await configFile.createWritable();
+                const exportData = {
+                    version: 1,
+                    appName: 'NanoBanana',
+                    exportedAt: new Date().toISOString(),
+                    records: state.history.map(h => ({
+                        prompt: h.prompt,
+                        aspectRatio: h.aspectRatio,
+                        imageQuality: h.imageQuality,
+                        imageFile: h.imageFile || null,
+                        createdAt: h.createdAt
+                    }))
+                };
+                await writable.write(JSON.stringify(exportData, null, 2));
+                await writable.close();
+            } catch (e) {
+                console.error('配置文件更新失败:', e);
+            }
+        }
+
+        async function loadConfigFromFolder() {
+            if (!state.saveFolderHandle) return;
+            try {
+                const configFile = await state.saveFolderHandle.getFileHandle('banana-history.json');
+                const file = await configFile.getFile();
+                const text = await file.text();
+                const data = JSON.parse(text);
+
+                if (data.version === 1 && data.records) {
+                    const existingTimes = new Set(state.history.map(h => h.createdAt));
+                    let importCount = 0;
+                    let skipCount = 0;
+
+                    // 导入新记录（图片文件不存在则跳过不导入）
+                    for (const record of data.records) {
+                        if (!existingTimes.has(record.createdAt)) {
+                            let thumbnail = await readThumbnailFromFolder(record.imageFile);
+                            if (thumbnail) {
+                                state.history.push({
+                                    ...record,
+                                    id: record.id || Date.now() + Math.random(),
+                                    thumbnail: thumbnail
+                                });
+                                importCount++;
+                            } else {
+                                skipCount++;
+                            }
+                        }
+                    }
+
+                    // 为已有但缺少缩略图的记录重新从文件夹加载图片
+                    // 如果图片文件已被本地删除，则移除该条历史记录
+                    let reloadCount = 0;
+                    let removeCount = 0;
+                    const toRemoveIds = [];
+                    for (const record of state.history) {
+                        if (!record.thumbnail && record.imageFile) {
+                            const thumbnail = await readThumbnailFromFolder(record.imageFile);
+                            if (thumbnail) {
+                                record.thumbnail = thumbnail;
+                                reloadCount++;
+                            } else {
+                                toRemoveIds.push(record.id);
+                                removeCount++;
+                            }
+                        }
+                    }
+                    if (toRemoveIds.length > 0) {
+                        state.history = state.history.filter(h => !toRemoveIds.includes(h.id));
+                    }
+
+                    const changed = importCount > 0 || reloadCount > 0 || removeCount > 0;
+                    if (changed) {
+                        saveHistoryToStorage();
+                        await updateConfigInFolder();
+                        renderHistory();
+                        const msgs = [];
+                        if (importCount > 0) msgs.push(`导入 ${importCount} 条记录`);
+                        if (reloadCount > 0) msgs.push(`恢复 ${reloadCount} 张图片`);
+                        if (removeCount > 0) msgs.push(`清理 ${removeCount} 条失效记录`);
+                        showToast(msgs.join('，'));
+                    }
+                }
+            } catch (e) {
+                if (e.name !== 'NotFoundError') {
+                    console.error('加载配置失败:', e);
+                }
+            }
+        }
+
+        async function readThumbnailFromFolder(imageFile) {
+            if (!imageFile || !state.saveFolderHandle) return null;
+            try {
+                const imgHandle = await state.saveFolderHandle.getFileHandle(imageFile);
+                const imgFile = await imgHandle.getFile();
+                return await fileToBase64(imgFile);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // --- 历史记录管理 ---
+        function addToHistory(prompt, imageBase64, settings) {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const record = {
+                id: Date.now(),
+                prompt: prompt,
+                aspectRatio: settings.aspectRatio,
+                imageQuality: settings.imageQuality,
+                thumbnail: `data:image/jpeg;base64,${imageBase64}`,
+                imageFile: `NanoBanana_${timestamp}.jpg`,
+                createdAt: new Date().toISOString()
+            };
+            state.history.unshift(record);
+            // 限制历史记录数量（保留最近100条）
+            if (state.history.length > 100) state.history = state.history.slice(0, 100);
+            saveHistoryToStorage();
+            renderHistory();
+        }
+
+        function saveHistoryToStorage() {
+            try {
+                // localStorage 只存元数据，不存缩略图（base64 太大会撑爆 5MB 限制）
+                const slim = state.history.map(h => ({
+                    id: h.id,
+                    prompt: h.prompt,
+                    aspectRatio: h.aspectRatio,
+                    imageQuality: h.imageQuality,
+                    imageFile: h.imageFile,
+                    createdAt: h.createdAt
+                }));
+                localStorage.setItem('nano_banana_history', JSON.stringify(slim));
+            } catch (e) {
+                console.error('历史记录存储失败', e);
+            }
+            // 保存自动保存设置
+            localStorage.setItem('nano_banana_autosave', document.getElementById('autoSaveToggle').checked);
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            const clearBtn = document.getElementById('clearHistoryBtn');
+
+            if (state.history.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-[11px] text-gray-600 py-4">
+                        <i class="fas fa-clock-rotate-left text-lg mb-2 block"></i>
+                        暂无历史记录
+                    </div>`;
+                clearBtn.classList.add('hidden');
+                return;
+            }
+
+            clearBtn.classList.remove('hidden');
+            container.innerHTML = '';
+
+            state.history.forEach((record) => {
+                const time = new Date(record.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const card = document.createElement('div');
+                card.className = 'history-card flex gap-2 p-2 rounded-lg border border-gray-800 bg-gray-900/50 cursor-pointer';
+                card.onclick = () => loadFromHistory(record);
+                card.innerHTML = `
+                    ${record.thumbnail ? `<div class="w-12 h-12 shrink-0 rounded overflow-hidden bg-gray-800">
+                        <img src="${record.thumbnail}" class="w-full h-full object-cover" alt="">
+                    </div>` : `<div class="w-12 h-12 shrink-0 rounded bg-gray-800 flex items-center justify-center">
+                        <i class="fas fa-image text-gray-600 text-xs"></i>
+                    </div>`}
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[11px] text-gray-300 truncate" title="${record.prompt}">${record.prompt}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[10px] text-gray-600">${time}</span>
+                            <span class="text-[10px] text-gray-700">|</span>
+                            <span class="text-[10px] text-gray-600">${record.aspectRatio || '1:1'}</span>
+                        </div>
+                    </div>
+                    <button onclick="event.stopPropagation(); deleteHistoryItem(${record.id})" class="shrink-0 w-6 h-6 flex items-center justify-center text-gray-700 hover:text-red-400 transition">
+                        <i class="fas fa-times text-[10px]"></i>
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function loadFromHistory(record) {
+            document.getElementById('promptInput').value = record.prompt || '';
+            if (record.aspectRatio) document.getElementById('aspectRatioSelect').value = record.aspectRatio;
+            if (record.imageQuality) document.getElementById('imageQualitySelect').value = record.imageQuality;
+            if (record.thumbnail) {
+                showResult(record.thumbnail, true);
+            }
+            showToast('已加载历史记录');
+        }
+
+        function deleteHistoryItem(id) {
+            state.history = state.history.filter(h => h.id !== id);
+            saveHistoryToStorage();
+            renderHistory();
+            showToast('已删除');
+        }
+
+        function clearHistory() {
+            if (!confirm('确定清空所有历史记录？此操作不可恢复。')) return;
+            state.history = [];
+            localStorage.removeItem('nano_banana_history');
+            renderHistory();
+            showToast('历史记录已清空');
+        }
+
+        // --- 导入导出 ---
+        function loadConfigFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    if (data.version === 1 && data.records) {
+                        const existingTimes = new Set(state.history.map(h => h.createdAt));
+                        let importCount = 0;
+                        for (const record of data.records) {
+                            if (!existingTimes.has(record.createdAt)) {
+                                state.history.push({
+                                    ...record,
+                                    id: Date.now() + Math.random()
+                                });
+                                importCount++;
+                            }
+                        }
+                        // 按时间排序
+                        state.history.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                        saveHistoryToStorage();
+                        renderHistory();
+                        showToast(`成功导入 ${importCount} 条记录`);
+                    } else {
+                        showToast('配置文件格式不正确', 'error');
+                    }
+                } catch (err) {
+                    showToast('文件解析失败: ' + err.message, 'error');
+                }
+            };
+            input.click();
+        }
+
+        function exportHistory() {
+            if (state.history.length === 0) {
+                showToast('没有可导出的记录', 'error');
+                return;
+            }
+            const exportData = {
+                version: 1,
+                appName: 'NanoBanana',
+                exportedAt: new Date().toISOString(),
+                records: state.history.map(h => ({
+                    prompt: h.prompt,
+                    aspectRatio: h.aspectRatio,
+                    imageQuality: h.imageQuality,
+                    imageFile: h.imageFile || null,
+                    createdAt: h.createdAt
+                }))
+            };
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `banana-history-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('历史记录已导出');
+        }
+
+        // --- 图片裁剪功能 ---
+        let cropperInstance = null;
+        const CROP_PRESETS = {
+            free:     { width: null, height: null, ratio: NaN },
+            desktop:  { width: 1464, height: 600, ratio: 1464 / 600 },
+            mobile:   { width: 600,  height: 450, ratio: 600 / 450 },
+            square:   { width: 1600, height: 1600, ratio: 1 },
+            portrait: { width: 1200, height: 1600, ratio: 1200 / 1600 },
+            '16:9':   { width: 1920, height: 1080, ratio: 16 / 9 },
+            '9:16':   { width: 1080, height: 1920, ratio: 9 / 16 },
+            custom:   { width: null, height: null, ratio: NaN }
+        };
+        let currentCropPreset = 'free';
+
+        function openCropModal() {
+            const resultImg = document.getElementById('resultImage');
+            if (!resultImg.src) return;
+
+            document.getElementById('cropModal').classList.remove('hidden');
+            const cropImg = document.getElementById('cropImage');
+            cropImg.src = resultImg.src;
+            cropImg.classList.remove('hidden');
+
+            // 等图片加载后初始化 cropper
+            cropImg.onload = () => {
+                initCropperInstance();
+            };
+            // 如果图片已缓存直接触发
+            if (cropImg.complete && cropImg.naturalWidth > 0) {
+                initCropperInstance();
+            }
+
+            // 绑定质量滑块
+            document.getElementById('cropQualityRange').oninput = (e) => {
+                document.getElementById('cropQualityValue').textContent = e.target.value + '%';
+            };
+        }
+
+        function initCropperInstance() {
+            destroyCropperInstance();
+            const cropImg = document.getElementById('cropImage');
+            const preset = CROP_PRESETS[currentCropPreset];
+
+            cropperInstance = new Cropper(cropImg, {
+                aspectRatio: preset.ratio,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 0.9,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+                ready() {
+                    const data = this.cropper.getImageData();
+                    document.getElementById('cropOriginalSize').textContent =
+                        `${Math.round(data.naturalWidth)} x ${Math.round(data.naturalHeight)}`;
+                    updateCropSizeInfo();
+                },
+                crop() {
+                    updateCropSizeInfo();
+                }
+            });
+        }
+
+        function destroyCropperInstance() {
+            if (cropperInstance) {
+                cropperInstance.destroy();
+                cropperInstance = null;
+            }
+        }
+
+        function updateCropSizeInfo() {
+            if (!cropperInstance) return;
+            const data = cropperInstance.getData();
+            document.getElementById('cropCurrentSize').textContent =
+                `${Math.round(data.width)} x ${Math.round(data.height)}`;
+        }
+
+        function setCropPreset(type) {
+            currentCropPreset = type;
+            // 更新按钮状态
+            document.querySelectorAll('.crop-preset-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.preset === type);
+            });
+            // 显示/隐藏自定义输入框
+            const customInputs = document.getElementById('customSizeInputs');
+            if (type === 'custom') {
+                customInputs.classList.remove('hidden');
+                // 如果已有值就立即应用
+                applyCustomSize();
+            } else {
+                customInputs.classList.add('hidden');
+                if (cropperInstance) {
+                    const preset = CROP_PRESETS[type];
+                    cropperInstance.setAspectRatio(preset.ratio);
+                }
+            }
+        }
+
+        function applyCustomSize() {
+            const w = parseInt(document.getElementById('customWidth').value);
+            const h = parseInt(document.getElementById('customHeight').value);
+            if (!w || !h || w <= 0 || h <= 0) return;
+
+            CROP_PRESETS.custom = { width: w, height: h, ratio: w / h };
+            currentCropPreset = 'custom';
+
+            if (cropperInstance) {
+                cropperInstance.setAspectRatio(w / h);
+            }
+        }
+
+        function getCroppedCanvas() {
+            if (!cropperInstance) return null;
+            const mode = document.getElementById('cropResizeMode').value;
+            const preset = CROP_PRESETS[currentCropPreset];
+            let options = {
+                fillColor: '#000',
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high'
+            };
+            if (mode === 'resize' && preset.width) {
+                options.width = preset.width;
+                options.height = preset.height;
+            }
+            return cropperInstance.getCroppedCanvas(options);
+        }
+
+        function cropAndApply() {
+            const canvas = getCroppedCanvas();
+            if (!canvas) { showToast('裁剪失败', 'error'); return; }
+
+            const quality = parseInt(document.getElementById('cropQualityRange').value) / 100;
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+            // 替换结果图片
+            document.getElementById('resultImage').src = dataUrl;
+            closeCropModal();
+            showToast('裁剪已应用');
+        }
+
+        function cropAndDownload() {
+            const canvas = getCroppedCanvas();
+            if (!canvas) { showToast('裁剪失败', 'error'); return; }
+
+            const quality = parseInt(document.getElementById('cropQualityRange').value) / 100;
+            canvas.toBlob((blob) => {
+                if (!blob) return;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const suffix = currentCropPreset !== 'free' ? `_${currentCropPreset}` : '_cropped';
+                a.href = url;
+                a.download = `NanoBanana-${Date.now()}${suffix}.jpg`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('裁剪图片已下载');
+            }, 'image/jpeg', quality);
+        }
+
+        function closeCropModal() {
+            destroyCropperInstance();
+            document.getElementById('cropModal').classList.add('hidden');
+            document.getElementById('cropImage').src = '';
+        }
+
+        // 裁剪弹窗内的键盘操控
+        document.addEventListener('keydown', (e) => {
+            if (!cropperInstance) return;
+            if (document.getElementById('cropModal').classList.contains('hidden')) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+            // Esc 关闭
+            if (e.key === 'Escape') { closeCropModal(); return; }
+
+            const amount = e.shiftKey ? 10 : 1;
+            let data = cropperInstance.getData();
+            let changed = false;
+
+            switch (e.key) {
+                case 'ArrowLeft':  data.x -= amount; changed = true; break;
+                case 'ArrowRight': data.x += amount; changed = true; break;
+                case 'ArrowUp':    data.y -= amount; changed = true; break;
+                case 'ArrowDown':  data.y += amount; changed = true; break;
+            }
+            if (changed) {
+                e.preventDefault();
+                cropperInstance.setData(data);
+                updateCropSizeInfo();
+            }
+        });
     </script>
 </body>
 </html>
