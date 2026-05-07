@@ -211,6 +211,7 @@
                         <select id="modelSelect" onchange="updateModelBadge()" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-sm text-gray-300 focus:border-yellow-400 outline-none font-mono appearance-none">
                             <option value="gemini-3-pro-image-preview">Gemini 3 Pro (高质量)</option>
                             <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash (快速)</option>
+                            <option value="gpt-image-2-all">GPT Image 2 All (多图合成)</option>
                         </select>
                         <i class="fas fa-chevron-down absolute right-3 top-3 text-xs text-gray-500 pointer-events-none"></i>
                     </div>
@@ -565,6 +566,8 @@
 
     <script>
         // --- 状态管理 ---
+        const GPT_IMAGE_MODEL = 'gpt-image-2-all';
+
         const state = {
             refImages: [],
             isGenerating: false,
@@ -609,7 +612,10 @@
             const model = select.value;
             const badge = document.getElementById('modelBadge');
             const badgeShort = document.getElementById('modelBadgeShort');
-            if (model.includes('flash')) {
+            if (model === GPT_IMAGE_MODEL) {
+                badge.textContent = 'GPT Image 2 All';
+                badgeShort.textContent = 'GPT';
+            } else if (model.includes('flash')) {
                 badge.textContent = 'Gemini 3.1 Flash';
                 badgeShort.textContent = 'Flash';
             } else {
@@ -813,69 +819,178 @@
             startLoading();
 
             try {
-                // 构造 URL
-                const url = `${host}/v1beta/models/${model}:generateContent?key=${key}`;
+                const settings = { aspectRatio: aspectRatio, imageQuality: imageQuality, model: model };
+                let result;
 
-                // 构造 Payload
-                const parts = [{ text: prompt }];
-                if (state.refImages && state.refImages.length > 0) {
-                    state.refImages.forEach(img => {
-                        parts.push({
-                            inline_data: { mime_type: img.mimeType, data: img.data }
-                        });
-                    });
+                if (model === GPT_IMAGE_MODEL) {
+                    result = await requestGptImageGeneration(host, key, prompt, settings);
+                } else {
+                    result = await requestGeminiImageGeneration(host, key, prompt, settings);
                 }
 
-                const payload = {
-                    contents: [{ role: "user", parts: parts }],
-                    generationConfig: {
-                        responseModalities: ["TEXT", "IMAGE"],
-                        imageConfig: { 
-                            aspectRatio: aspectRatio,
-                            imageSize: imageQuality // 添加画质参数
-                        }
-                    }
-                };
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                }).catch(err => {
-                    // 捕获网络层面的错误 (如 CORS)
-                    throw new Error(`网络请求失败: ${err.message} (可能是跨域 CORS 问题)`);
-                });
-
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error?.message || `API 错误: ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                // 解析结果
-                const contentParts = data.candidates?.[0]?.content?.parts || [];
-                const imagePart = contentParts.find(p => p.inline_data || p.inlineData);
-                const base64Img = imagePart?.inline_data?.data || imagePart?.inlineData?.data;
-
-                if (!base64Img) {
-                    const textPart = contentParts.find(p => p.text);
-                    throw new Error(textPart ? `模型返回文本: ${textPart.text.substring(0, 30)}...` : '未返回图片');
-                }
-
-                showResult(`data:image/jpeg;base64,${base64Img}`);
+                showResult(result.displayUrl);
 
                 // 保存到历史记录
-                const settings = { aspectRatio: aspectRatio, imageQuality: imageQuality };
-                addToHistory(prompt, base64Img, settings);
+                addToHistory(prompt, result.historyImage, { ...settings, imageSize: result.imageSize }, { isUrl: result.isUrl });
 
-                // 自动保存到文件夹
-                await saveToFolder(prompt, base64Img, settings);
+                // 自动保存到文件夹（URL 结果会先尝试转为 base64，失败则只展示不保存文件）
+                if (result.base64Img) {
+                    await saveToFolder(prompt, result.base64Img, { ...settings, imageSize: result.imageSize });
+                } else {
+                    showToast('图片已生成；远程 URL 因跨域限制未自动保存到本地', 'error');
+                }
 
             } catch (error) {
                 console.error(error);
                 showToast(error.message, 'error');
                 stopLoading();
+            }
+        }
+
+        async function requestGeminiImageGeneration(host, key, prompt, settings) {
+            // 构造 URL
+            const url = `${host}/v1beta/models/${settings.model}:generateContent?key=${key}`;
+
+            // 构造 Payload
+            const parts = [{ text: prompt }];
+            if (state.refImages && state.refImages.length > 0) {
+                state.refImages.forEach(img => {
+                    parts.push({
+                        inline_data: { mime_type: img.mimeType, data: img.data }
+                    });
+                });
+            }
+
+            const payload = {
+                contents: [{ role: "user", parts: parts }],
+                generationConfig: {
+                    responseModalities: ["TEXT", "IMAGE"],
+                    imageConfig: {
+                        aspectRatio: settings.aspectRatio,
+                        imageSize: settings.imageQuality // 添加画质参数
+                    }
+                }
+            };
+
+            const data = await postJson(url, { 'Content-Type': 'application/json' }, payload);
+
+            // 解析结果
+            const contentParts = data.candidates?.[0]?.content?.parts || [];
+            const imagePart = contentParts.find(p => p.inline_data || p.inlineData);
+            const base64Img = normalizeBase64Image(imagePart?.inline_data?.data || imagePart?.inlineData?.data);
+
+            if (!base64Img) {
+                const textPart = contentParts.find(p => p.text);
+                throw new Error(textPart ? `模型返回文本: ${textPart.text.substring(0, 30)}...` : '未返回图片');
+            }
+
+            return {
+                displayUrl: `data:image/jpeg;base64,${base64Img}`,
+                historyImage: base64Img,
+                base64Img: base64Img,
+                imageSize: settings.imageQuality,
+                isUrl: false
+            };
+        }
+
+        async function requestGptImageGeneration(host, key, prompt, settings) {
+            const imageSize = getGptImageSize(settings.aspectRatio, settings.imageQuality);
+            const url = `${host}/v1/images/generations`;
+            const payload = {
+                model: GPT_IMAGE_MODEL,
+                size: imageSize,
+                n: 1,
+                prompt: prompt
+            };
+
+            if (state.refImages && state.refImages.length > 0) {
+                payload.image = state.refImages.map(img => `data:${img.mimeType};base64,${img.data}`);
+            }
+
+            const data = await postJson(url, {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${key}`,
+                'Content-Type': 'application/json'
+            }, payload);
+
+            const firstImage = data.data?.[0] || {};
+            const base64Img = normalizeBase64Image(firstImage.b64_json || firstImage.base64 || firstImage.image);
+            if (base64Img) {
+                return {
+                    displayUrl: `data:image/png;base64,${base64Img}`,
+                    historyImage: base64Img,
+                    base64Img: base64Img,
+                    imageSize: imageSize,
+                    isUrl: false
+                };
+            }
+
+            if (firstImage.url) {
+                const fetchedBase64 = await imageUrlToBase64(firstImage.url);
+                return {
+                    displayUrl: firstImage.url,
+                    historyImage: fetchedBase64 || firstImage.url,
+                    base64Img: fetchedBase64,
+                    imageSize: imageSize,
+                    isUrl: !fetchedBase64
+                };
+            }
+
+            throw new Error(data.error?.message || '未返回图片');
+        }
+
+        async function postJson(url, headers, payload) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(payload)
+            }).catch(err => {
+                // 捕获网络层面的错误 (如 CORS)
+                throw new Error(`网络请求失败: ${err.message} (可能是跨域 CORS 问题)`);
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error?.message || `API 错误: ${response.status}`);
+            }
+
+            return response.json();
+        }
+
+        function normalizeBase64Image(value) {
+            if (!value || typeof value !== 'string') return '';
+            return value.includes(',') ? value.split(',').pop() : value;
+        }
+
+        function getGptImageSize(aspectRatio, imageQuality) {
+            const longestSideMap = { '1K': 1024, '2K': 2048, '4K': 4096 };
+            const longestSide = longestSideMap[imageQuality] || 1024;
+            const [ratioW, ratioH] = aspectRatio.split(':').map(Number);
+            if (!ratioW || !ratioH) return `${longestSide}x${longestSide}`;
+
+            if (ratioW >= ratioH) {
+                const height = Math.round(longestSide * ratioH / ratioW);
+                return `${longestSide}x${height}`;
+            }
+
+            const width = Math.round(longestSide * ratioW / ratioH);
+            return `${width}x${longestSide}`;
+        }
+
+        async function imageUrlToBase64(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) return '';
+                const blob = await response.blob();
+                return await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(normalizeBase64Image(reader.result));
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (e) {
+                console.warn('远程图片转 base64 失败:', e);
+                return '';
             }
         }
 
@@ -1017,6 +1132,8 @@
                     prompt: prompt,
                     aspectRatio: settings.aspectRatio,
                     imageQuality: settings.imageQuality,
+                    model: settings.model,
+                    imageSize: settings.imageSize || settings.imageQuality,
                     imageFile: imgFileName,
                     createdAt: new Date().toISOString(),
                     refImageCount: state.refImages.length
@@ -1049,6 +1166,8 @@
                         prompt: h.prompt,
                         aspectRatio: h.aspectRatio,
                         imageQuality: h.imageQuality,
+                        model: h.model || null,
+                        imageSize: h.imageSize || null,
                         imageFile: h.imageFile || null,
                         createdAt: h.createdAt
                     }))
@@ -1151,15 +1270,17 @@
         }
 
         // --- 历史记录管理 ---
-        function addToHistory(prompt, imageBase64, settings) {
+        function addToHistory(prompt, imageSource, settings, options = {}) {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
             const record = {
                 id: Date.now(),
                 prompt: prompt,
                 aspectRatio: settings.aspectRatio,
                 imageQuality: settings.imageQuality,
-                thumbnail: `data:image/jpeg;base64,${imageBase64}`,
-                imageFile: `NanoBanana_${timestamp}.jpg`,
+                model: settings.model,
+                imageSize: settings.imageSize || settings.imageQuality,
+                thumbnail: options.isUrl ? imageSource : `data:image/jpeg;base64,${imageSource}`,
+                imageFile: options.isUrl ? null : `NanoBanana_${timestamp}.jpg`,
                 createdAt: new Date().toISOString()
             };
             state.history.unshift(record);
@@ -1177,6 +1298,8 @@
                     prompt: h.prompt,
                     aspectRatio: h.aspectRatio,
                     imageQuality: h.imageQuality,
+                    model: h.model,
+                    imageSize: h.imageSize,
                     imageFile: h.imageFile,
                     createdAt: h.createdAt
                 }));
@@ -1236,6 +1359,10 @@
             document.getElementById('promptInput').value = record.prompt || '';
             if (record.aspectRatio) document.getElementById('aspectRatioSelect').value = record.aspectRatio;
             if (record.imageQuality) document.getElementById('imageQualitySelect').value = record.imageQuality;
+            if (record.model) {
+                document.getElementById('modelSelect').value = record.model;
+                updateModelBadge();
+            }
             if (record.thumbnail) {
                 showResult(record.thumbnail, true);
             }
